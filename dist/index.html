@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#f2f8f8">
+  <meta name="description" content="记录日常收支，按月查看账单和支出分类。">
+  <title>日日记账</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="app.js"></script>
+  <script defer src="assets.js"></script>
+</head>
+<body>
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="book" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 3v18m3-12h4m-4 4h4M3 8h3m-3 8h3"/></symbol>
+    <symbol id="grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6" height="6" rx="1"/><rect x="14.5" y="3.5" width="6" height="6" rx="1"/><rect x="3.5" y="14.5" width="6" height="6" rx="1"/><rect x="14.5" y="14.5" width="6" height="6" rx="1"/></symbol>
+    <symbol id="download" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4m-11 5v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 10h16"/></symbol>
+    <symbol id="left" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
+    <symbol id="right" viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></symbol>
+    <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="up" viewBox="0 0 24 24"><path d="M6 18 18 6M8 6h10v10"/></symbol>
+    <symbol id="down" viewBox="0 0 24 24"><path d="M6 6 18 18M8 18h10V8"/></symbol>
+    <symbol id="wallet" viewBox="0 0 24 24"><path d="M20 8V6a2 2 0 0 0-2-2H6a3 3 0 0 0 0 6h13a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3V7m18 7h-6a2 2 0 0 0 0 4h6"/></symbol>
+    <symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/></symbol>
+    <symbol id="edit" viewBox="0 0 24 24"><path d="m5 16 11-11a2 2 0 0 1 3 3L8 19l-4 1zM14 7l3 3"/></symbol>
+    <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="food" viewBox="0 0 24 24"><path d="M4 4v5a3 3 0 0 0 6 0V4M7 4v16m11 0V4c-3 1-4 4-4 8h4"/></symbol>
+    <symbol id="bag" viewBox="0 0 24 24"><path d="M5 8h14l2 12H3zm4 2V7a3 3 0 0 1 6 0v3"/></symbol>
+    <symbol id="train" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="15" rx="3"/><path d="M5 11h14M9 15h.01M15 15h.01M9 18l-2 3m8-3 2 3"/></symbol>
+    <symbol id="home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8M5 10v10h14V10m-9 10v-6h4v6"/></symbol>
+    <symbol id="spark" viewBox="0 0 24 24"><path d="M12 3c1 5 4 8 9 9-5 1-8 4-9 9-1-5-4-8-9-9 5-1 8-4 9-9Z"/></symbol>
+  </svg>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-icon"><svg><use href="#book"/></svg></span><div><strong>日日记账</strong><small>个人收支账本</small></div></div>
+      <div class="side-actions">
+        <button class="nav" id="open-backup" type="button"><svg aria-hidden="true"><use href="#book"/></svg><span>备份与恢复</span></button>
+        <nav class="page-nav" aria-label="账本页面">
+          <a id="nav-overview" href="#overview" class="nav active" aria-current="page"><svg aria-hidden="true"><use href="#grid"/></svg><span>账本概览</span></a>
+          <a id="nav-assets" href="#assets" class="nav"><svg aria-hidden="true"><use href="#wallet"/></svg><span>月度资产</span></a>
+        </nav>
+        <button class="nav" id="export" type="button"><svg><use href="#download"/></svg><span>导出本月</span></button>
+      </div>
+      <div class="privacy"><svg><use href="#lock"/></svg><span>数据保存在当前浏览器</span></div>
+    </aside>
+    <main id="overview" aria-labelledby="overview-page-name">
+      <h1 id="overview-page-name" class="sr-only">账本概览</h1>
+      <header class="page-header">
+        <div class="header-actions">
+          <div class="month-switch">
+            <button type="button" id="prev" aria-label="上一个月"><svg><use href="#left"/></svg></button>
+            <label class="month-picker"><svg><use href="#calendar"/></svg><span id="month-label"></span><input id="month" type="month" min="0001-01" max="9999-12" aria-label="选择月份"></label>
+            <button type="button" id="next" aria-label="下一个月"><svg><use href="#right"/></svg></button>
+          </div>
+          <button class="primary" id="add" type="button"><svg><use href="#plus"/></svg>记一笔</button>
+        </div>
+      </header>
+      <div class="page-content">
+        <div class="summary" aria-label="本月收支" aria-live="polite">
+          <article class="metric balance">
+            <div class="metric-top"><span>本月结余</span><span class="metric-icon"><svg><use href="#wallet"/></svg></span></div>
+            <strong id="balance">¥0.00</strong><small>本月收入 − 本月支出</small>
+          </article>
+          <button type="button" class="metric metric-filter" data-filter="income" aria-pressed="false" aria-controls="ledger-chart ledger-details">
+            <span class="metric-top"><span>本月收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></span>
+            <strong id="income">¥0.00</strong><small id="income-count"></small>
+          </button>
+          <button type="button" class="metric metric-filter" data-filter="expense" aria-pressed="false" aria-controls="ledger-chart ledger-details">
+            <span class="metric-top"><span>本月支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></span>
+            <strong id="expense">¥0.00</strong><small id="expense-count"></small>
+          </button>
+        </div>
+        <section class="panel monthly-limit" aria-labelledby="monthly-limit-title">
+          <div><h2 id="monthly-limit-title">本月支出额度</h2><p id="monthly-limit-value" aria-live="polite">未设置</p></div>
+          <button id="edit-budget" class="secondary" type="button">设置额度</button>
+        </section>
+        <div class="detail-grid">
+          <section id="ledger-chart" class="panel breakdown" aria-labelledby="chart-title">
+            <div class="panel-heading"><div><h2 id="chart-title">额度概览</h2><p id="chart-description">本月净支出占计划额度的比例</p></div></div>
+            <div class="ring" id="ring"><div><small id="ring-label">未设置额度</small><strong id="ring-total">—</strong></div></div>
+            <div id="legend" class="legend"></div>
+          </section>
+          <section id="ledger-details" class="panel ledger" aria-labelledby="ledger-title">
+            <div class="panel-heading">
+              <div><h2 id="ledger-title">账单明细</h2><p id="ledger-count"></p></div>
+              <div class="filters" aria-label="筛选收支">
+                <button type="button" data-filter="all" aria-pressed="true">全部</button>
+                <button type="button" data-filter="expense" aria-pressed="false">支出</button>
+                <button type="button" data-filter="income" aria-pressed="false">收入</button>
+              </div>
+            </div>
+            <label class="field ledger-search">搜索本月账单<input id="ledger-search" type="search" autocomplete="off" placeholder="备注、地点或分类"></label>
+            <div id="entries"></div>
+          </section>
+        </div>
+        <div id="demo-bar" class="demo-bar" hidden><span><svg><use href="#spark"/></svg>正在查看示例账本</span><button id="clear-demo" type="button">开始记自己的账 <svg><use href="#right"/></svg></button></div>
+      </div>
+    </main>
+    <main id="assets" aria-labelledby="assets-page-name" hidden>
+      <h2 id="assets-page-name" class="sr-only">月度资产</h2>
+      <header class="page-header">
+        <div class="header-actions">
+          <button id="manage-asset-columns" class="secondary" type="button">管理列目</button>
+          <button id="add-asset-month" class="primary" type="button"><svg aria-hidden="true"><use href="#plus"/></svg>记录资产</button>
+        </div>
+      </header>
+      <div class="page-content">
+        <div class="summary asset-summary" aria-live="polite">
+          <article class="metric balance">
+            <div class="metric-top"><span>最近资产总额</span><span class="metric-icon"><svg aria-hidden="true"><use href="#wallet"/></svg></span></div>
+            <strong id="latest-asset-total">—</strong><small id="latest-asset-month">暂无记录</small>
+          </article>
+          <article class="metric">
+            <div class="metric-top"><span>较上月变化</span></div>
+            <strong id="latest-asset-change">—</strong><small id="asset-comparison">保存相邻两个月后计算差值</small>
+          </article>
+        </div>
+        <section aria-labelledby="asset-history-title">
+          <div class="panel-heading"><div><h2 id="asset-history-title">月度资产明细</h2><p>金额单位为元。</p></div></div>
+          <div id="asset-cards" class="asset-cards"></div>
+          <div class="empty" id="no-assets"><svg aria-hidden="true"><use href="#wallet"/></svg><p>还没有资产记录</p></div>
+        </section>
+      </div>
+    </main>
+    <p id="notice" class="notice" role="status"></p>
+  </div>
+  <dialog id="backup-dialog" aria-labelledby="backup-title">
+    <header class="dialog-header"><h2 id="backup-title">备份与恢复</h2><button id="close-backup" class="icon-button" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
+    <p class="backup-note">备份包含账单、照片、月度资产和支出额度。恢复前请确认备份内容。</p>
+    <div class="backup-actions">
+      <button id="download-backup" class="primary" type="button">下载备份</button>
+      <button id="choose-backup" class="secondary" type="button">选择备份文件</button>
+    </div>
+    <p id="offline-status" class="backup-note" role="status"></p>
+    <input id="backup-file" type="file" accept=".json,application/json" hidden>
+    <p id="backup-status" class="backup-note" role="status"></p>
+    <button id="restore-backup" class="danger" type="button" hidden>确认替换当前账本</button>
+  </dialog>
+  <dialog id="budget-editor" class="record-editor" aria-labelledby="budget-editor-title">
+    <form id="budget-form">
+      <header class="dialog-header"><h2 id="budget-editor-title">设置支出额度</h2><button type="button" id="close-budget-editor" class="icon-button" aria-label="关闭" autofocus><svg aria-hidden="true"><use href="#close"/></svg></button></header>
+      <div id="budget-editor-body" class="record-editor-body">
+        <p id="budget-month" class="asset-form-hint"></p>
+        <div id="budget-amount-field"></div>
+      </div>
+      <footer class="dialog-footer">
+        <p id="budget-error" class="form-error" role="status"></p>
+        <button class="primary" type="submit">保存额度</button>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="asset-editor" class="record-editor" aria-labelledby="asset-editor-title">
+    <form id="asset-form" autocomplete="off">
+      <header class="dialog-header"><h2 id="asset-editor-title">记录资产</h2><button type="button" id="close-asset-editor" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
+      <div id="asset-editor-body" class="record-editor-body">
+        <label class="field">记录日期<span class="date-control"><span class="date-display" aria-hidden="true"><span class="date-value">选择日期</span><svg><use href="#calendar"/></svg></span><input name="date" type="date" min="0001-01-01" max="9999-12-31" required></span></label>
+        <p id="asset-date-note" class="asset-form-hint" role="status"></p>
+        <p class="asset-form-hint">负债填负数。空白列目按 0 元计入合计。</p>
+        <div id="asset-fields"></div>
+      </div>
+      <footer class="dialog-footer">
+        <p id="asset-form-error" class="form-error" role="status"></p>
+        <button class="primary" type="submit">保存资产记录</button>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="asset-columns-editor" aria-labelledby="asset-columns-title">
+    <header class="dialog-header"><h2 id="asset-columns-title">管理资产列目</h2><button type="button" id="close-asset-columns" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
+    <form id="new-asset-column" class="asset-column-form" autocomplete="off">
+      <label class="field">账户名称<textarea name="columnName" rows="1" autocomplete="off" maxlength="30" required placeholder="例如 工商银行工资卡"></textarea></label>
+      <button class="primary" type="submit">添加</button>
+    </form>
+    <p id="asset-columns-status" class="asset-form-hint" role="status"></p>
+    <section class="asset-presets" aria-labelledby="asset-presets-title">
+      <div class="asset-presets-heading">
+        <h3 id="asset-presets-title">备选列目</h3>
+        <button id="restore-asset-presets" class="secondary" type="button" hidden>恢复隐藏项</button>
+      </div>
+      <div id="asset-presets-list"></div>
+    </section>
+    <h3 class="asset-selected-title">已选列目</h3>
+    <div id="asset-column-list"></div>
+  </dialog>
+  <dialog id="editor" class="record-editor" aria-labelledby="editor-title">
+    <form id="entry-form" autocomplete="off">
+      <header class="dialog-header"><h2 id="editor-title">记一笔</h2><button type="button" id="close-editor" class="icon-button" aria-label="关闭" autofocus><svg><use href="#close"/></svg></button></header>
+      <div id="entry-editor-body" class="record-editor-body">
+        <fieldset class="type"><legend class="sr-only">收支类型</legend><label><input type="radio" name="type" value="expense" checked>支出</label><label><input type="radio" name="type" value="income">收入</label></fieldset>
+        <div id="entry-amount-field"></div>
+        <div class="field-grid">
+          <label class="field">分类<select name="category" required></select></label>
+          <label class="field">日期<span class="date-control"><span class="date-display" aria-hidden="true"><span class="date-value">选择日期</span><svg><use href="#calendar"/></svg></span><input name="date" type="date" min="0001-01-01" max="9999-12-31" required></span></label>
+        </div>
+        <div class="location-field">
+          <label for="entry-location">地点</label>
+          <a id="open-amap" class="attachment-action" href="https://www.amap.com/" target="_blank" rel="noopener noreferrer">打开高德地图<svg aria-hidden="true"><use href="#up"/></svg></a>
+          <div class="field"><textarea id="entry-location" name="location" rows="1" autocomplete="off" maxlength="80" placeholder="选填，例如店名或地址"></textarea></div>
+        </div>
+        <label class="field">备注<textarea name="note" rows="1" autocomplete="off" maxlength="80" placeholder="选填"></textarea></label>
+        <div class="photo-field">
+          <div class="photo-heading">
+            <span class="photo-title">账单照片</span>
+            <button type="button" id="upload-photo" class="attachment-action" aria-describedby="photo-status"><svg aria-hidden="true"><use href="#plus"/></svg>上传照片</button>
+          </div>
+          <input id="photo-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+          <div id="photo-attachment" hidden>
+            <img id="photo-preview" alt="账单照片" width="440" height="220">
+            <button type="button" id="remove-photo" class="danger">移除照片</button>
+          </div>
+          <p id="photo-status" role="status"></p>
+        </div>
+      </div>
+      <footer class="dialog-footer">
+        <p class="form-error" id="form-error" role="status"></p>
+        <button type="button" id="delete" class="danger" hidden>删除记录</button><button id="save-entry" type="submit" class="primary">保存记录</button>
+      </footer>
+    </form>
+  </dialog>
+  <div id="amount-keypad" role="group" aria-label="金额数字键盘" hidden>
+    <button type="button" data-key="1">1</button>
+    <button type="button" data-key="2">2</button>
+    <button type="button" data-key="3">3</button>
+    <button type="button" data-key="4">4</button>
+    <button type="button" data-key="5">5</button>
+    <button type="button" data-key="6">6</button>
+    <button type="button" data-key="7">7</button>
+    <button type="button" data-key="8">8</button>
+    <button type="button" data-key="9">9</button>
+    <button type="button" data-key="." aria-label="小数点">.</button>
+    <button type="button" data-key="0">0</button>
+    <button type="button" data-key="Backspace" aria-label="删除最后一位">⌫</button>
+    <button type="button" data-key="-" aria-label="切换正负号" aria-pressed="false">±</button>
+    <button type="button" data-key="Delete">清空</button>
+    <button type="button" id="close-amount-keypad">完成</button>
+  </div>
+  <template id="entry-template">
+    <button class="entry" type="button"><span class="category-icon"><svg><use/></svg></span><span class="entry-label"><strong></strong><small></small><small class="entry-location" hidden></small><small class="entry-photo" hidden>有照片</small></span><span class="entry-amount"></span><svg class="edit-icon" aria-hidden="true"><use href="#edit"/></svg></button>
+  </template>
+</body>
+</html>
