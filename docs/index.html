@@ -105,7 +105,8 @@ h2 { font-size: 17px; letter-spacing: -.02em; }
 .share-summary-action { display: flex; justify-content: end; margin-bottom: 10px; }
 .share-summary-action button { display: inline-flex; align-items: center; gap: 5px; }
 .share-summary-action svg { width: 15px; height: 15px; }
-.github-sync { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.github-sync { display: grid; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.github-sync h3 { margin: 0; font-size: .875rem; }
 .github-sync .backup-note { margin: 4px 0 0; overflow-wrap: anywhere; }
 .github-sync-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .github-sync-remember { display: flex; align-items: center; gap: 6px; font-size: .875rem; }
@@ -366,7 +367,7 @@ dialog::backdrop { background: #102f3b70; }
 }
 
 </style>
-  <meta name="ledger-version" content="ecbed55905070301">
+  <meta name="ledger-version" content="9ff68adebf34ada8">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
@@ -513,16 +514,6 @@ dialog::backdrop { background: #102f3b70; }
         <div class="share-summary-action">
           <button id="share-month-summary" type="button" class="secondary"><svg aria-hidden="true"><use href="#up"/></svg>分享个人汇总</button>
         </div>
-        <section class="panel github-sync" aria-labelledby="github-sync-title">
-          <div>
-            <h2 id="github-sync-title">GitHub 同步</h2>
-            <p id="github-sync-status" class="backup-note" role="status">尚未连接私有汇总仓库。</p>
-          </div>
-          <div class="github-sync-actions">
-            <button id="open-github-sync" type="button" class="secondary">连接设置</button>
-            <button id="sync-github-now" type="button" class="secondary" hidden>立即同步</button>
-          </div>
-        </section>
       </div>
     </main>
     <p id="notice" class="notice" role="status"></p>
@@ -538,6 +529,16 @@ dialog::backdrop { background: #102f3b70; }
     <input id="backup-file" type="file" accept=".json,application/json" hidden>
     <p id="backup-status" class="backup-note" role="status"></p>
     <button id="restore-backup" class="danger" type="button" hidden>确认替换当前账本</button>
+    <section class="github-sync" aria-labelledby="github-sync-title">
+      <div>
+        <h3 id="github-sync-title">GitHub 同步</h3>
+        <p id="github-sync-status" class="backup-note" role="status">尚未连接私有汇总仓库。</p>
+      </div>
+      <div class="github-sync-actions">
+        <button id="open-github-sync" type="button" class="secondary">连接设置</button>
+        <button id="sync-github-now" type="button" class="secondary" hidden>立即同步</button>
+      </div>
+    </section>
   </dialog>
   <dialog id="budget-editor" class="record-editor" aria-labelledby="budget-editor-title">
     <form id="budget-form">
@@ -934,7 +935,7 @@ function writePartnerMonth(period, summary) {
 function renderCombined(income, expense) {
   let partner;
   let message = githubPartnerTotals === null
-    ? "请连接 GitHub，或导入对方发来的月度收支汇总。"
+    ? "可导入对方发来的月度收支汇总。"
     : "对方尚未同步该月的收支汇总。";
   try {
     partner = githubPartnerTotals?.[month] ?? readPartnerTotals()[month];

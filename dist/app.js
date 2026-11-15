@@ -238,7 +238,7 @@ function writePartnerMonth(period, summary) {
 function renderCombined(income, expense) {
   let partner;
   let message = githubPartnerTotals === null
-    ? "请连接 GitHub，或导入对方发来的月度收支汇总。"
+    ? "可导入对方发来的月度收支汇总。"
     : "对方尚未同步该月的收支汇总。";
   try {
     partner = githubPartnerTotals?.[month] ?? readPartnerTotals()[month];

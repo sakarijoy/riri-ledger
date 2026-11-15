@@ -153,16 +153,6 @@
         <div class="share-summary-action">
           <button id="share-month-summary" type="button" class="secondary"><svg aria-hidden="true"><use href="#up"/></svg>分享个人汇总</button>
         </div>
-        <section class="panel github-sync" aria-labelledby="github-sync-title">
-          <div>
-            <h2 id="github-sync-title">GitHub 同步</h2>
-            <p id="github-sync-status" class="backup-note" role="status">尚未连接私有汇总仓库。</p>
-          </div>
-          <div class="github-sync-actions">
-            <button id="open-github-sync" type="button" class="secondary">连接设置</button>
-            <button id="sync-github-now" type="button" class="secondary" hidden>立即同步</button>
-          </div>
-        </section>
       </div>
     </main>
     <p id="notice" class="notice" role="status"></p>
@@ -178,6 +168,16 @@
     <input id="backup-file" type="file" accept=".json,application/json" hidden>
     <p id="backup-status" class="backup-note" role="status"></p>
     <button id="restore-backup" class="danger" type="button" hidden>确认替换当前账本</button>
+    <section class="github-sync" aria-labelledby="github-sync-title">
+      <div>
+        <h3 id="github-sync-title">GitHub 同步</h3>
+        <p id="github-sync-status" class="backup-note" role="status">尚未连接私有汇总仓库。</p>
+      </div>
+      <div class="github-sync-actions">
+        <button id="open-github-sync" type="button" class="secondary">连接设置</button>
+        <button id="sync-github-now" type="button" class="secondary" hidden>立即同步</button>
+      </div>
+    </section>
   </dialog>
   <dialog id="budget-editor" class="record-editor" aria-labelledby="budget-editor-title">
     <form id="budget-form">

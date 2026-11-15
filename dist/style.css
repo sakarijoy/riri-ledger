@@ -95,7 +95,8 @@ h2 { font-size: 17px; letter-spacing: -.02em; }
 .share-summary-action { display: flex; justify-content: end; margin-bottom: 10px; }
 .share-summary-action button { display: inline-flex; align-items: center; gap: 5px; }
 .share-summary-action svg { width: 15px; height: 15px; }
-.github-sync { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.github-sync { display: grid; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.github-sync h3 { margin: 0; font-size: .875rem; }
 .github-sync .backup-note { margin: 4px 0 0; overflow-wrap: anywhere; }
 .github-sync-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .github-sync-remember { display: flex; align-items: center; gap: 6px; font-size: .875rem; }
