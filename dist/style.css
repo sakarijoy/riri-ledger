@@ -260,6 +260,8 @@ dialog::backdrop { background: #102f3b70; }
 .photo-title { font-size: .875rem; font-weight: 650; }
 #photo-attachment { display: flex; flex-direction: column; align-items: start; gap: 7px; margin-top: 8px; }
 #photo-preview { display: block; width: 100%; height: auto; max-height: 220px; object-fit: contain; border-radius: 8px; background: #f2f8f8; }
+.photo-actions { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.photo-actions .danger { margin-inline-start: auto; }
 #photo-status { margin-top: 6px; color: var(--muted); font-size: 12px; }
 #photo-status:empty { display: none; }
 .danger { background: #fff0f1; border: 0; color: #a32b38; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
@@ -300,7 +302,7 @@ dialog::backdrop { background: #102f3b70; }
   .brand strong, h2 { font-size: 1.125rem; }
   .brand strong, h2 { letter-spacing: normal; }
   #assets .header-actions > button { flex: 1; }
-  .primary, .secondary, .filters button, .type label, .attachment-action, .asset-column-form .danger { min-height: 44px; }
+  .primary, .secondary, .filters button, .type label, .attachment-action, .asset-column-form .danger, .photo-actions .danger { min-height: 44px; }
   .month-switch button, .icon-button { width: 44px; height: 44px; }
   .nav#export { min-height: 44px; }
   .nav#open-backup { min-height: 44px; }

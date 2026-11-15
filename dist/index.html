@@ -199,7 +199,11 @@
           <input id="photo-file" type="file" accept="image/*" hidden>
           <div id="photo-attachment" hidden>
             <img id="photo-preview" alt="账单照片" width="440" height="220">
-            <button type="button" id="remove-photo" class="danger">移除照片</button>
+            <div class="photo-actions">
+              <button type="button" id="rotate-photo-left" class="attachment-action">向左旋转</button>
+              <button type="button" id="rotate-photo-right" class="attachment-action">向右旋转</button>
+              <button type="button" id="remove-photo" class="danger">移除照片</button>
+            </div>
           </div>
           <p id="photo-status" role="status"></p>
         </div>

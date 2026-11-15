@@ -32,6 +32,8 @@ let noticeTimer;
 let entryPoint = null;
 let photoRequest = 0;
 let entryPhoto = "";
+let photoSource = "";
+let photoTurns = 0;
 const form = $("entry-form");
 const fields = form.elements;
 const editor = $("editor");
@@ -301,9 +303,9 @@ function updateCategories(selected) {
 function openEditor(entry) {
   form.reset();
   photoRequest += 1;
-  $("save-entry").disabled = false;
+  setPhotoProcessing(false);
   $("photo-status").textContent = "";
-  showPhoto(entry?.photo ?? "");
+  resetPhoto(entry?.photo ?? "");
   editingId = entry?.id ?? null;
   fields.type.value = entry?.type ?? "expense";
   entryAmount.reset(entry?.amount);
@@ -528,6 +530,18 @@ function showPhoto(photo) {
   else $("photo-preview").removeAttribute("src");
 }
 
+function resetPhoto(photo) {
+  photoSource = photo;
+  photoTurns = 0;
+  showPhoto(photo);
+}
+
+function setPhotoProcessing(processing) {
+  $("save-entry").disabled = processing;
+  $("rotate-photo-left").disabled = processing;
+  $("rotate-photo-right").disabled = processing;
+}
+
 function loadPhoto(url) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -566,22 +580,52 @@ async function preparePhoto(file) {
   }
 }
 
-function encodePhoto(source, width, height) {
+function encodePhoto(source, width, height, turns = 0) {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d", { alpha: false });
+  const sideways = turns % 2 !== 0;
   for (const [maxSide, quality] of [[1400, 0.76], [1050, 0.76], [750, 0.76], [560, 0.66], [400, 0.58], [280, 0.50]]) {
     const scale = Math.min(1, maxSide / Math.max(width, height));
-    canvas.width = Math.max(1, Math.round(width * scale));
-    canvas.height = Math.max(1, Math.round(height * scale));
+    const scaledWidth = Math.max(1, Math.round(width * scale));
+    const scaledHeight = Math.max(1, Math.round(height * scale));
+    canvas.width = sideways ? scaledHeight : scaledWidth;
+    canvas.height = sideways ? scaledWidth : scaledHeight;
     context.fillStyle = "#fff";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(source, 0, 0, canvas.width, canvas.height);
+    context.translate(canvas.width / 2, canvas.height / 2);
+    context.rotate(turns * Math.PI / 2);
+    context.drawImage(source, -scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
     const photo = canvas.toDataURL("image/jpeg", quality);
     if (photo.startsWith("data:image/jpeg;base64,") && photo.length <= 160000) return photo;
   }
   throw new Error("Photo exceeds storage limit");
 }
 
+async function rotatePhoto(direction) {
+  if (!photoSource || $("save-entry").disabled) return;
+  const request = ++photoRequest;
+  const turns = (photoTurns + direction + 4) % 4;
+  const status = $("photo-status");
+  setPhotoProcessing(true);
+  try {
+    let photo = photoSource;
+    if (turns !== 0) {
+      const image = await loadPhoto(photoSource);
+      if (!editor.open || request !== photoRequest) return;
+      photo = encodePhoto(image, image.naturalWidth, image.naturalHeight, turns);
+    }
+    photoTurns = turns;
+    showPhoto(photo);
+    status.textContent = "照片方向已调整，保存记录后生效。";
+  } catch {
+    if (editor.open && request === photoRequest) status.textContent = "无法旋转这张照片。";
+  } finally {
+    if (editor.open && request === photoRequest) setPhotoProcessing(false);
+  }
+}
+
+$("rotate-photo-left").addEventListener("click", () => rotatePhoto(-1));
+$("rotate-photo-right").addEventListener("click", () => rotatePhoto(1));
 $("upload-photo").addEventListener("click", () => $("photo-file").click());
 
 async function selectPhoto(event) {
@@ -590,24 +634,23 @@ async function selectPhoto(event) {
   if (!file) return;
   const request = ++photoRequest;
   const status = $("photo-status");
-  const saveButton = $("save-entry");
   if (!file.size || file.size > 20 * 1024 * 1024) {
     status.textContent = file.size ? "请选择 20 MB 以内的照片。" : "没有读取到照片，请重新拍照或从相册选择。";
-    saveButton.disabled = false;
+    setPhotoProcessing(false);
     return;
   }
-  saveButton.disabled = true;
+  setPhotoProcessing(true);
   status.textContent = "正在处理照片…";
   try {
     const { photo, error } = await preparePhoto(file);
     if (editor.open && request === photoRequest) {
-      if (photo) showPhoto(photo);
+      if (photo) resetPhoto(photo);
       status.textContent = error ?? "照片将在保存记录时附加到账单。";
     }
   } catch {
     if (editor.open && request === photoRequest) status.textContent = "照片压缩失败，请试试分辨率较低的照片。";
   } finally {
-    if (editor.open && request === photoRequest) saveButton.disabled = false;
+    if (editor.open && request === photoRequest) setPhotoProcessing(false);
   }
 }
 
@@ -615,9 +658,9 @@ $("photo-file").addEventListener("change", selectPhoto);
 
 $("remove-photo").addEventListener("click", () => {
   photoRequest += 1;
-  showPhoto("");
+  resetPhoto("");
   $("photo-status").textContent = "";
-  $("save-entry").disabled = false;
+  setPhotoProcessing(false);
   $("upload-photo").focus();
 });
 
