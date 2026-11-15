@@ -534,7 +534,7 @@
   function route() {
     const hash = window.location.hash.slice(1);
     const page = hash === "assets" ? "assets" : "overview";
-    $("export").hidden = page !== "overview";
+    $("export").hidden = page !== "overview" || overviewMode === "combined";
     for (const id of ["overview", "assets"]) {
       const active = id === page;
       $(id).hidden = !active;
@@ -573,6 +573,10 @@
     if (backup.budgetNames !== undefined && (!isObject(backup.budgetNames) ||
       !Object.entries(backup.budgetNames).every(([category, name]) =>
         Object.hasOwn(categories.expense, category) && typeof name === "string" && name.trim() && name.length <= 24))) return false;
+    if (backup.partnerTotals !== undefined && (!isObject(backup.partnerTotals) ||
+      !Object.entries(backup.partnerTotals).every(([period, totals]) =>
+        validMonth(period) && isObject(totals) && [totals.income, totals.expense].every((amount) =>
+          Number.isSafeInteger(amount) && Math.abs(amount) <= 999999999999)))) return false;
     const entryIds = new Set();
     for (const entry of backup.records) {
       if (!isObject(entry) || typeof entry.id !== "string" || !entry.id || entryIds.has(entry.id) ||
@@ -627,6 +631,7 @@
         assets: readAssets(),
         budgets: readBudgets(),
         budgetNames: readBudgetNames(),
+        partnerTotals: readPartnerTotals(),
         hiddenPresets: [], // Required by earlier versions of the backup importer.
       };
       const url = URL.createObjectURL(new Blob([JSON.stringify(backup)], { type: "application/json" }));
@@ -667,14 +672,17 @@
 
   restoreButton.addEventListener("click", () => {
     if (!pendingBackup) return;
-    const dataTypes = pendingBackup.budgets ? "账单、月度资产和支出额度" : "账单和月度资产";
-    if (!window.confirm("恢复会替换当前浏览器里的" + dataTypes + "。确定继续？")) return;
+    const dataTypes = ["账单", "月度资产"];
+    if (pendingBackup.budgets) dataTypes.push("支出额度");
+    if (pendingBackup.partnerTotals) dataTypes.push("对方收支汇总");
+    if (!window.confirm("恢复会替换当前浏览器里的" + dataTypes.join("、") + "。确定继续？")) return;
     const changes = [
       [storageKey, pendingBackup.records],
       [key, pendingBackup.assets],
     ];
     if (pendingBackup.budgets) changes.push([budgetKey, pendingBackup.budgets]);
     if (pendingBackup.budgetNames) changes.push([budgetNamesKey, pendingBackup.budgetNames]);
+    if (pendingBackup.partnerTotals) changes.push([partnerTotalsKey, pendingBackup.partnerTotals]);
     const previous = [];
     try {
       for (const [target] of changes) previous.push([target, localStorage.getItem(target)]);

@@ -54,47 +54,67 @@
             <button type="button" id="next" aria-label="下一个月"><svg><use href="#right"/></svg></button>
           </div>
           <button class="primary" id="add" type="button"><svg><use href="#plus"/></svg>记一笔</button>
+          <button class="primary" id="edit-partner-totals" type="button" hidden>录入汇总</button>
         </div>
       </header>
       <div class="page-content">
-        <div class="summary" aria-label="本月收支" aria-live="polite">
-          <article class="metric balance">
-            <div class="metric-top"><span>本月结余</span><span class="metric-icon"><svg><use href="#wallet"/></svg></span></div>
-            <strong id="balance">¥0.00</strong><small>本月收入 − 本月支出</small>
-          </article>
-          <button type="button" class="metric metric-filter" data-filter="income" aria-pressed="false" aria-controls="ledger-chart ledger-details">
-            <span class="metric-top"><span>本月收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></span>
-            <strong id="income">¥0.00</strong><small id="income-count"></small>
-          </button>
-          <button type="button" class="metric metric-filter" data-filter="expense" aria-pressed="false" aria-controls="ledger-chart ledger-details">
-            <span class="metric-top"><span>本月支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></span>
-            <strong id="expense">¥0.00</strong><small id="expense-count"></small>
-          </button>
+        <div class="filters overview-switch" role="group" aria-label="查看账本范围">
+          <button id="show-personal" type="button" aria-pressed="true" aria-controls="overview-personal">我的账本</button>
+          <button id="show-combined" type="button" aria-pressed="false" aria-controls="overview-combined">两人合计</button>
         </div>
-        <section class="panel monthly-limit" aria-labelledby="monthly-limit-title">
-          <div><h2 id="monthly-limit-title">本月支出额度</h2><p id="monthly-limit-value" aria-live="polite">未设置</p></div>
-          <button id="edit-budget" class="secondary" type="button">设置额度</button>
-        </section>
-        <div class="detail-grid">
-          <section id="ledger-chart" class="panel breakdown" aria-labelledby="chart-title">
-            <div class="panel-heading"><div><h2 id="chart-title">额度概览</h2><p id="chart-description">本月净支出占计划额度的比例</p></div></div>
-            <div class="ring" id="ring"><div><small id="ring-label">未设置额度</small><strong id="ring-total">—</strong></div></div>
-            <div id="legend" class="legend"></div>
+        <div id="overview-personal">
+          <div class="summary" aria-label="本月收支" aria-live="polite">
+            <article class="metric balance">
+              <div class="metric-top"><span>本月结余</span><span class="metric-icon"><svg><use href="#wallet"/></svg></span></div>
+              <strong id="balance">¥0.00</strong><small>本月收入 − 本月支出</small>
+            </article>
+            <button type="button" class="metric metric-filter" data-filter="income" aria-pressed="false" aria-controls="ledger-chart ledger-details">
+              <span class="metric-top"><span>本月收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></span>
+              <strong id="income">¥0.00</strong><small id="income-count"></small>
+            </button>
+            <button type="button" class="metric metric-filter" data-filter="expense" aria-pressed="false" aria-controls="ledger-chart ledger-details">
+              <span class="metric-top"><span>本月支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></span>
+              <strong id="expense">¥0.00</strong><small id="expense-count"></small>
+            </button>
+          </div>
+          <section class="panel monthly-limit" aria-labelledby="monthly-limit-title">
+            <div><h2 id="monthly-limit-title">本月支出额度</h2><p id="monthly-limit-value" aria-live="polite">未设置</p></div>
+            <button id="edit-budget" class="secondary" type="button">设置额度</button>
           </section>
-          <section id="ledger-details" class="panel ledger" aria-labelledby="ledger-title">
-            <div class="panel-heading">
-              <div><h2 id="ledger-title">账单明细</h2><p id="ledger-count"></p></div>
-              <div class="filters" aria-label="筛选收支">
-                <button type="button" data-filter="all" aria-pressed="true">全部</button>
-                <button type="button" data-filter="expense" aria-pressed="false">支出</button>
-                <button type="button" data-filter="income" aria-pressed="false">收入</button>
+          <div class="detail-grid">
+            <section id="ledger-chart" class="panel breakdown" aria-labelledby="chart-title">
+              <div class="panel-heading"><div><h2 id="chart-title">额度概览</h2><p id="chart-description">本月净支出占计划额度的比例</p></div></div>
+              <div class="ring" id="ring"><div><small id="ring-label">未设置额度</small><strong id="ring-total">—</strong></div></div>
+              <div id="legend" class="legend"></div>
+            </section>
+            <section id="ledger-details" class="panel ledger" aria-labelledby="ledger-title">
+              <div class="panel-heading">
+                <div><h2 id="ledger-title">账单明细</h2><p id="ledger-count"></p></div>
+                <div class="filters" aria-label="筛选收支">
+                  <button type="button" data-filter="all" aria-pressed="true">全部</button>
+                  <button type="button" data-filter="expense" aria-pressed="false">支出</button>
+                  <button type="button" data-filter="income" aria-pressed="false">收入</button>
+                </div>
               </div>
-            </div>
-            <label class="field ledger-search">搜索本月账单<input id="ledger-search" type="search" autocomplete="off" placeholder="备注、地点或分类"></label>
-            <div id="entries"></div>
-          </section>
+              <label class="field ledger-search">搜索本月账单<input id="ledger-search" type="search" autocomplete="off" placeholder="备注、地点或分类"></label>
+              <div id="entries"></div>
+            </section>
+          </div>
+          <div id="demo-bar" class="demo-bar" hidden><span><svg><use href="#spark"/></svg>正在查看示例账本</span><button id="clear-demo" type="button">开始记自己的账 <svg><use href="#right"/></svg></button></div>
         </div>
-        <div id="demo-bar" class="demo-bar" hidden><span><svg><use href="#spark"/></svg>正在查看示例账本</span><button id="clear-demo" type="button">开始记自己的账 <svg><use href="#right"/></svg></button></div>
+        <section id="overview-combined" aria-label="两人当月收支合计" hidden>
+          <div class="summary combined-summary" aria-live="polite">
+            <article class="metric">
+              <div class="metric-top"><span>两人总收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></div>
+              <strong id="combined-income">—</strong>
+            </article>
+            <article class="metric">
+              <div class="metric-top"><span>两人总支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></div>
+              <strong id="combined-expense">—</strong>
+            </article>
+          </div>
+          <p id="combined-status" class="backup-note" role="status"></p>
+        </section>
       </div>
     </main>
     <main id="assets" aria-labelledby="assets-page-name" hidden>
@@ -127,7 +147,7 @@
   </div>
   <dialog id="backup-dialog" aria-labelledby="backup-title">
     <header class="dialog-header"><h2 id="backup-title">备份与恢复</h2><button id="close-backup" class="icon-button" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
-    <p class="backup-note">备份包含账单、照片、月度资产和支出额度。恢复前请确认备份内容。</p>
+    <p class="backup-note">备份包含账单、照片、月度资产、支出额度和对方收支汇总。恢复前请确认备份内容。</p>
     <div class="backup-actions">
       <button id="download-backup" class="primary" type="button">下载备份</button>
       <button id="choose-backup" class="secondary" type="button">选择备份文件</button>
@@ -147,6 +167,21 @@
       <footer class="dialog-footer">
         <p id="budget-error" class="form-error" role="status"></p>
         <button class="primary" type="submit">保存额度</button>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="partner-editor" class="record-editor" aria-labelledby="partner-editor-title">
+    <form id="partner-form">
+      <header class="dialog-header"><h2 id="partner-editor-title">对方当月收支</h2><button type="button" id="close-partner-editor" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
+      <div class="record-editor-body">
+        <p id="partner-month" class="asset-form-hint"></p>
+        <p class="asset-form-hint">没有收入或支出时填 0。清空两项后保存可移除当月汇总。</p>
+        <div id="partner-income-field"></div>
+        <div id="partner-expense-field"></div>
+      </div>
+      <footer class="dialog-footer">
+        <p id="partner-error" class="form-error" role="status"></p>
+        <button class="primary" type="submit">保存汇总</button>
       </footer>
     </form>
   </dialog>

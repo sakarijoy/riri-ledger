@@ -101,6 +101,9 @@ h2 { font-size: 17px; letter-spacing: -.02em; }
 .filters { display: flex; padding: 3px; gap: 2px; border-radius: 8px; background: #edf4f6; white-space: nowrap; }
 .filters button { border: 0; background: transparent; border-radius: 6px; padding: 5px 9px; font-size: 12px; color: var(--muted); }
 .filters button[aria-pressed=true] { background: white; color: #09636a; font-weight: 660; box-shadow: 0 1px 4px #153d4417; }
+.overview-switch { width: fit-content; margin-bottom: 14px; }
+.overview-switch button { padding-inline: 12px; min-height: 36px; font-size: .875rem; }
+.combined-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .entry { display: grid; grid-template-columns: 37px minmax(0,1fr) auto 16px; width: 100%; align-items: center; gap: 10px; min-height: 57px; padding: 8px 2px; border: 0; border-top: 1px solid #eaf2f3; background: transparent; text-align: left; }
 .entry:hover { background: #f4fafb; }
 .entry.sample { opacity: 1; }
@@ -356,7 +359,7 @@ dialog::backdrop { background: #102f3b70; }
 }
 
 </style>
-  <meta name="ledger-version" content="d4c47aa5e9673939">
+  <meta name="ledger-version" content="44a201183516b2be">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
@@ -405,47 +408,67 @@ dialog::backdrop { background: #102f3b70; }
             <button type="button" id="next" aria-label="下一个月"><svg><use href="#right"/></svg></button>
           </div>
           <button class="primary" id="add" type="button"><svg><use href="#plus"/></svg>记一笔</button>
+          <button class="primary" id="edit-partner-totals" type="button" hidden>录入汇总</button>
         </div>
       </header>
       <div class="page-content">
-        <div class="summary" aria-label="本月收支" aria-live="polite">
-          <article class="metric balance">
-            <div class="metric-top"><span>本月结余</span><span class="metric-icon"><svg><use href="#wallet"/></svg></span></div>
-            <strong id="balance">¥0.00</strong><small>本月收入 − 本月支出</small>
-          </article>
-          <button type="button" class="metric metric-filter" data-filter="income" aria-pressed="false" aria-controls="ledger-chart ledger-details">
-            <span class="metric-top"><span>本月收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></span>
-            <strong id="income">¥0.00</strong><small id="income-count"></small>
-          </button>
-          <button type="button" class="metric metric-filter" data-filter="expense" aria-pressed="false" aria-controls="ledger-chart ledger-details">
-            <span class="metric-top"><span>本月支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></span>
-            <strong id="expense">¥0.00</strong><small id="expense-count"></small>
-          </button>
+        <div class="filters overview-switch" role="group" aria-label="查看账本范围">
+          <button id="show-personal" type="button" aria-pressed="true" aria-controls="overview-personal">我的账本</button>
+          <button id="show-combined" type="button" aria-pressed="false" aria-controls="overview-combined">两人合计</button>
         </div>
-        <section class="panel monthly-limit" aria-labelledby="monthly-limit-title">
-          <div><h2 id="monthly-limit-title">本月支出额度</h2><p id="monthly-limit-value" aria-live="polite">未设置</p></div>
-          <button id="edit-budget" class="secondary" type="button">设置额度</button>
-        </section>
-        <div class="detail-grid">
-          <section id="ledger-chart" class="panel breakdown" aria-labelledby="chart-title">
-            <div class="panel-heading"><div><h2 id="chart-title">额度概览</h2><p id="chart-description">本月净支出占计划额度的比例</p></div></div>
-            <div class="ring" id="ring"><div><small id="ring-label">未设置额度</small><strong id="ring-total">—</strong></div></div>
-            <div id="legend" class="legend"></div>
+        <div id="overview-personal">
+          <div class="summary" aria-label="本月收支" aria-live="polite">
+            <article class="metric balance">
+              <div class="metric-top"><span>本月结余</span><span class="metric-icon"><svg><use href="#wallet"/></svg></span></div>
+              <strong id="balance">¥0.00</strong><small>本月收入 − 本月支出</small>
+            </article>
+            <button type="button" class="metric metric-filter" data-filter="income" aria-pressed="false" aria-controls="ledger-chart ledger-details">
+              <span class="metric-top"><span>本月收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></span>
+              <strong id="income">¥0.00</strong><small id="income-count"></small>
+            </button>
+            <button type="button" class="metric metric-filter" data-filter="expense" aria-pressed="false" aria-controls="ledger-chart ledger-details">
+              <span class="metric-top"><span>本月支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></span>
+              <strong id="expense">¥0.00</strong><small id="expense-count"></small>
+            </button>
+          </div>
+          <section class="panel monthly-limit" aria-labelledby="monthly-limit-title">
+            <div><h2 id="monthly-limit-title">本月支出额度</h2><p id="monthly-limit-value" aria-live="polite">未设置</p></div>
+            <button id="edit-budget" class="secondary" type="button">设置额度</button>
           </section>
-          <section id="ledger-details" class="panel ledger" aria-labelledby="ledger-title">
-            <div class="panel-heading">
-              <div><h2 id="ledger-title">账单明细</h2><p id="ledger-count"></p></div>
-              <div class="filters" aria-label="筛选收支">
-                <button type="button" data-filter="all" aria-pressed="true">全部</button>
-                <button type="button" data-filter="expense" aria-pressed="false">支出</button>
-                <button type="button" data-filter="income" aria-pressed="false">收入</button>
+          <div class="detail-grid">
+            <section id="ledger-chart" class="panel breakdown" aria-labelledby="chart-title">
+              <div class="panel-heading"><div><h2 id="chart-title">额度概览</h2><p id="chart-description">本月净支出占计划额度的比例</p></div></div>
+              <div class="ring" id="ring"><div><small id="ring-label">未设置额度</small><strong id="ring-total">—</strong></div></div>
+              <div id="legend" class="legend"></div>
+            </section>
+            <section id="ledger-details" class="panel ledger" aria-labelledby="ledger-title">
+              <div class="panel-heading">
+                <div><h2 id="ledger-title">账单明细</h2><p id="ledger-count"></p></div>
+                <div class="filters" aria-label="筛选收支">
+                  <button type="button" data-filter="all" aria-pressed="true">全部</button>
+                  <button type="button" data-filter="expense" aria-pressed="false">支出</button>
+                  <button type="button" data-filter="income" aria-pressed="false">收入</button>
+                </div>
               </div>
-            </div>
-            <label class="field ledger-search">搜索本月账单<input id="ledger-search" type="search" autocomplete="off" placeholder="备注、地点或分类"></label>
-            <div id="entries"></div>
-          </section>
+              <label class="field ledger-search">搜索本月账单<input id="ledger-search" type="search" autocomplete="off" placeholder="备注、地点或分类"></label>
+              <div id="entries"></div>
+            </section>
+          </div>
+          <div id="demo-bar" class="demo-bar" hidden><span><svg><use href="#spark"/></svg>正在查看示例账本</span><button id="clear-demo" type="button">开始记自己的账 <svg><use href="#right"/></svg></button></div>
         </div>
-        <div id="demo-bar" class="demo-bar" hidden><span><svg><use href="#spark"/></svg>正在查看示例账本</span><button id="clear-demo" type="button">开始记自己的账 <svg><use href="#right"/></svg></button></div>
+        <section id="overview-combined" aria-label="两人当月收支合计" hidden>
+          <div class="summary combined-summary" aria-live="polite">
+            <article class="metric">
+              <div class="metric-top"><span>两人总收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></div>
+              <strong id="combined-income">—</strong>
+            </article>
+            <article class="metric">
+              <div class="metric-top"><span>两人总支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></div>
+              <strong id="combined-expense">—</strong>
+            </article>
+          </div>
+          <p id="combined-status" class="backup-note" role="status"></p>
+        </section>
       </div>
     </main>
     <main id="assets" aria-labelledby="assets-page-name" hidden>
@@ -478,7 +501,7 @@ dialog::backdrop { background: #102f3b70; }
   </div>
   <dialog id="backup-dialog" aria-labelledby="backup-title">
     <header class="dialog-header"><h2 id="backup-title">备份与恢复</h2><button id="close-backup" class="icon-button" type="button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
-    <p class="backup-note">备份包含账单、照片、月度资产和支出额度。恢复前请确认备份内容。</p>
+    <p class="backup-note">备份包含账单、照片、月度资产、支出额度和对方收支汇总。恢复前请确认备份内容。</p>
     <div class="backup-actions">
       <button id="download-backup" class="primary" type="button">下载备份</button>
       <button id="choose-backup" class="secondary" type="button">选择备份文件</button>
@@ -498,6 +521,21 @@ dialog::backdrop { background: #102f3b70; }
       <footer class="dialog-footer">
         <p id="budget-error" class="form-error" role="status"></p>
         <button class="primary" type="submit">保存额度</button>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="partner-editor" class="record-editor" aria-labelledby="partner-editor-title">
+    <form id="partner-form">
+      <header class="dialog-header"><h2 id="partner-editor-title">对方当月收支</h2><button type="button" id="close-partner-editor" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
+      <div class="record-editor-body">
+        <p id="partner-month" class="asset-form-hint"></p>
+        <p class="asset-form-hint">没有收入或支出时填 0。清空两项后保存可移除当月汇总。</p>
+        <div id="partner-income-field"></div>
+        <div id="partner-expense-field"></div>
+      </div>
+      <footer class="dialog-footer">
+        <p id="partner-error" class="form-error" role="status"></p>
+        <button class="primary" type="submit">保存汇总</button>
       </footer>
     </form>
   </dialog>
@@ -592,6 +630,7 @@ const $ = (id) => document.getElementById(id);
 const storageKey = "riri-ledger-v1";
 const budgetKey = "riri-expense-plans-v1";
 const budgetNamesKey = "riri-expense-plan-names-v1";
+const partnerTotalsKey = "riri-partner-monthly-totals-v1";
 const currency = new Intl.NumberFormat("zh-CN", { style: "currency", currency: "CNY" });
 const categories = {
   expense: {
@@ -615,6 +654,7 @@ const today = new Intl.DateTimeFormat("sv-SE", {
 }).format();
 let month = today.slice(0, 7);
 let filter = "all";
+let overviewMode = "personal";
 let editingId = null;
 let noticeTimer;
 let entryPoint = null;
@@ -665,7 +705,7 @@ window.addEventListener("storage", (event) => {
     records = load();
     render();
   }
-  if (event.key === budgetKey) render();
+  if (event.key === budgetKey || event.key === partnerTotalsKey) render();
 });
 
 function save(next) {
@@ -794,6 +834,38 @@ function readBudgetNames() {
   return JSON.parse(localStorage.getItem(budgetNamesKey) ?? "{}");
 }
 
+function readPartnerTotals() {
+  return JSON.parse(localStorage.getItem(partnerTotalsKey) ?? "{}");
+}
+
+function renderCombined(income, expense) {
+  let partner;
+  let message = "请录入对方当月的收入和支出。";
+  try {
+    partner = readPartnerTotals()[month];
+  } catch {
+    message = "无法读取对方的收支汇总。";
+  }
+  $("combined-income").textContent = partner ? money(income + partner.income) : "—";
+  $("combined-expense").textContent = partner ? money(expense + partner.expense) : "—";
+  $("combined-status").textContent = partner ? "" : message;
+  $("edit-partner-totals").textContent = partner ? "编辑汇总" : "录入汇总";
+}
+
+function showOverview(mode) {
+  overviewMode = mode;
+  const combined = mode === "combined";
+  $("show-personal").setAttribute("aria-pressed", String(!combined));
+  $("show-combined").setAttribute("aria-pressed", String(combined));
+  $("overview-personal").hidden = combined;
+  $("overview-combined").hidden = !combined;
+  $("add").hidden = combined;
+  $("edit-partner-totals").hidden = !combined;
+  $("export").hidden = combined || $("overview").hidden;
+  $("overview").querySelector(".page-content").scrollTop = 0;
+  render();
+}
+
 function monthlyBudget(month, budgets) {
   const saved = budgets[month];
   const amount = typeof saved === "number"
@@ -847,6 +919,9 @@ function render() {
   const sum = (items) => items.reduce((total, entry) => total + entry.amount, 0);
   const income = sum(incomes);
   const expense = sum(expenses);
+  if (overviewMode === "combined") {
+    renderCombined(records === null ? 0 : income, records === null ? 0 : expense);
+  }
   $("month").value = month;
   $("month-label").textContent = Number(month.slice(0, 4)) + "年" + Number(month.slice(5)) + "月";
   $("prev").disabled = month === "0001-01";
@@ -1065,6 +1140,52 @@ $("budget-form").addEventListener("submit", (event) => {
   budgetEditor.close();
   render();
   announce(amount === null ? "已取消支出额度" : "已保存支出额度");
+});
+
+const partnerEditor = $("partner-editor");
+const partnerIncome = createAmountField($("partner-income-field"), "对方收入（元）", 10, "填写金额");
+const partnerExpense = createAmountField($("partner-expense-field"), "对方支出（元）", 10, "填写金额");
+let editingPartnerMonth;
+
+$("edit-partner-totals").addEventListener("click", () => {
+  let previous;
+  try {
+    previous = readPartnerTotals()[month];
+  } catch {
+    announce("无法读取对方的收支汇总。");
+    return;
+  }
+  editingPartnerMonth = month;
+  partnerIncome.reset(previous?.income);
+  partnerExpense.reset(previous?.expense);
+  $("partner-month").textContent = $("month-label").textContent;
+  $("partner-error").textContent = "";
+  partnerEditor.showModal();
+  partnerEditor.querySelector(".record-editor-body").scrollTop = 0;
+});
+$("close-partner-editor").addEventListener("click", () => partnerEditor.close());
+$("partner-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const income = partnerIncome.cents;
+  const expense = partnerExpense.cents;
+  const clearing = income === null && expense === null;
+  if (!clearing && (income === null || expense === null)) {
+    $("partner-error").textContent = "请同时填写收入和支出，其中一项没有金额时填 0。";
+    (income === null ? partnerIncome : partnerExpense).button.focus();
+    return;
+  }
+  try {
+    const totals = readPartnerTotals();
+    if (clearing) delete totals[editingPartnerMonth];
+    else totals[editingPartnerMonth] = { income, expense };
+    localStorage.setItem(partnerTotalsKey, JSON.stringify(totals));
+  } catch {
+    $("partner-error").textContent = "保存失败，请检查浏览器存储。";
+    return;
+  }
+  partnerEditor.close();
+  render();
+  announce(clearing ? "已移除当月汇总" : "已保存对方收支汇总");
 });
 
 function syncDateDisplay(input) {
@@ -1330,6 +1451,8 @@ $("export").addEventListener("click", () => {
 });
 
 $("add").addEventListener("click", () => openEditor());
+$("show-personal").addEventListener("click", () => showOverview("personal"));
+$("show-combined").addEventListener("click", () => showOverview("combined"));
 $("ledger-search").addEventListener("input", () => renderEntries(monthRecords()));
 $("close-editor").addEventListener("click", () => editor.close());
 $("prev").addEventListener("click", () => shiftMonth(-1));
@@ -1963,7 +2086,7 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
   function route() {
     const hash = window.location.hash.slice(1);
     const page = hash === "assets" ? "assets" : "overview";
-    $("export").hidden = page !== "overview";
+    $("export").hidden = page !== "overview" || overviewMode === "combined";
     for (const id of ["overview", "assets"]) {
       const active = id === page;
       $(id).hidden = !active;
@@ -2002,6 +2125,10 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
     if (backup.budgetNames !== undefined && (!isObject(backup.budgetNames) ||
       !Object.entries(backup.budgetNames).every(([category, name]) =>
         Object.hasOwn(categories.expense, category) && typeof name === "string" && name.trim() && name.length <= 24))) return false;
+    if (backup.partnerTotals !== undefined && (!isObject(backup.partnerTotals) ||
+      !Object.entries(backup.partnerTotals).every(([period, totals]) =>
+        validMonth(period) && isObject(totals) && [totals.income, totals.expense].every((amount) =>
+          Number.isSafeInteger(amount) && Math.abs(amount) <= 999999999999)))) return false;
     const entryIds = new Set();
     for (const entry of backup.records) {
       if (!isObject(entry) || typeof entry.id !== "string" || !entry.id || entryIds.has(entry.id) ||
@@ -2056,6 +2183,7 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
         assets: readAssets(),
         budgets: readBudgets(),
         budgetNames: readBudgetNames(),
+        partnerTotals: readPartnerTotals(),
         hiddenPresets: [], // Required by earlier versions of the backup importer.
       };
       const url = URL.createObjectURL(new Blob([JSON.stringify(backup)], { type: "application/json" }));
@@ -2096,14 +2224,17 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
 
   restoreButton.addEventListener("click", () => {
     if (!pendingBackup) return;
-    const dataTypes = pendingBackup.budgets ? "账单、月度资产和支出额度" : "账单和月度资产";
-    if (!window.confirm("恢复会替换当前浏览器里的" + dataTypes + "。确定继续？")) return;
+    const dataTypes = ["账单", "月度资产"];
+    if (pendingBackup.budgets) dataTypes.push("支出额度");
+    if (pendingBackup.partnerTotals) dataTypes.push("对方收支汇总");
+    if (!window.confirm("恢复会替换当前浏览器里的" + dataTypes.join("、") + "。确定继续？")) return;
     const changes = [
       [storageKey, pendingBackup.records],
       [key, pendingBackup.assets],
     ];
     if (pendingBackup.budgets) changes.push([budgetKey, pendingBackup.budgets]);
     if (pendingBackup.budgetNames) changes.push([budgetNamesKey, pendingBackup.budgetNames]);
+    if (pendingBackup.partnerTotals) changes.push([partnerTotalsKey, pendingBackup.partnerTotals]);
     const previous = [];
     try {
       for (const [target] of changes) previous.push([target, localStorage.getItem(target)]);
