@@ -575,8 +575,7 @@
         Object.hasOwn(categories.expense, category) && typeof name === "string" && name.trim() && name.length <= 24))) return false;
     if (backup.partnerTotals !== undefined && (!isObject(backup.partnerTotals) ||
       !Object.entries(backup.partnerTotals).every(([period, totals]) =>
-        validMonth(period) && isObject(totals) && [totals.income, totals.expense].every((amount) =>
-          Number.isSafeInteger(amount) && Math.abs(amount) <= 999999999999)))) return false;
+        validMonth(period) && isObject(totals) && [totals.income, totals.expense].every(validPartnerAmount)))) return false;
     const entryIds = new Set();
     for (const entry of backup.records) {
       if (!isObject(entry) || typeof entry.id !== "string" || !entry.id || entryIds.has(entry.id) ||

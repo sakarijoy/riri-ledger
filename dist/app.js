@@ -101,6 +101,14 @@ function monthRecords() {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
+function sumAmounts(entries) {
+  return entries.reduce((total, entry) => total + entry.amount, 0);
+}
+
+function monthLabel(period) {
+  return Number(period.slice(0, 4)) + "年" + Number(period.slice(5)) + "月";
+}
+
 function renderEntries(entries) {
   const query = $("ledger-search").value.trim().toLocaleLowerCase();
   const visible = entries.filter((entry) =>
@@ -212,9 +220,20 @@ function readPartnerTotals() {
   return JSON.parse(localStorage.getItem(partnerTotalsKey) ?? "{}");
 }
 
+function validPartnerAmount(amount) {
+  return Number.isSafeInteger(amount) && Math.abs(amount) < 100000000000000;
+}
+
+function writePartnerMonth(period, summary) {
+  const totals = readPartnerTotals();
+  if (summary === null) delete totals[period];
+  else totals[period] = summary;
+  localStorage.setItem(partnerTotalsKey, JSON.stringify(totals));
+}
+
 function renderCombined(income, expense) {
   let partner;
-  let message = "请录入对方当月的收入和支出。";
+  let message = "请导入对方发来的月度收支汇总。";
   try {
     partner = readPartnerTotals()[month];
   } catch {
@@ -223,7 +242,6 @@ function renderCombined(income, expense) {
   $("combined-income").textContent = partner ? money(income + partner.income) : "—";
   $("combined-expense").textContent = partner ? money(expense + partner.expense) : "—";
   $("combined-status").textContent = partner ? "" : message;
-  $("edit-partner-totals").textContent = partner ? "编辑汇总" : "录入汇总";
 }
 
 function showOverview(mode) {
@@ -234,7 +252,7 @@ function showOverview(mode) {
   $("overview-personal").hidden = combined;
   $("overview-combined").hidden = !combined;
   $("add").hidden = combined;
-  $("edit-partner-totals").hidden = !combined;
+  $("import-partner-totals").hidden = !combined;
   $("export").hidden = combined || $("overview").hidden;
   $("overview").querySelector(".page-content").scrollTop = 0;
   render();
@@ -290,14 +308,13 @@ function render() {
   const entries = monthRecords();
   const incomes = entries.filter((entry) => entry.type === "income");
   const expenses = entries.filter((entry) => entry.type === "expense");
-  const sum = (items) => items.reduce((total, entry) => total + entry.amount, 0);
-  const income = sum(incomes);
-  const expense = sum(expenses);
+  const income = sumAmounts(incomes);
+  const expense = sumAmounts(expenses);
   if (overviewMode === "combined") {
     renderCombined(records === null ? 0 : income, records === null ? 0 : expense);
   }
   $("month").value = month;
-  $("month-label").textContent = Number(month.slice(0, 4)) + "年" + Number(month.slice(5)) + "月";
+  $("month-label").textContent = monthLabel(month);
   $("prev").disabled = month === "0001-01";
   $("next").disabled = month === "9999-12";
   $("balance").textContent = money(income - expense);
@@ -516,9 +533,85 @@ $("budget-form").addEventListener("submit", (event) => {
   announce(amount === null ? "已取消支出额度" : "已保存支出额度");
 });
 
+const shareSummaryDialog = $("share-summary-dialog");
+const shareSummaryText = $("share-summary-text");
+const importSummaryDialog = $("import-summary-dialog");
+const importSummaryText = $("import-summary-text");
+const importSummaryError = $("import-summary-error");
+
+$("share-month-summary").addEventListener("click", () => {
+  const entries = records === null ? [] : monthRecords();
+  const income = sumAmounts(entries.filter((entry) => entry.type === "income"));
+  const expense = sumAmounts(entries.filter((entry) => entry.type === "expense"));
+  if (![income, expense].every(validPartnerAmount)) {
+    announce("本月金额超出可分享范围。");
+    return;
+  }
+  shareSummaryText.value = [
+    "日日记账月度汇总",
+    "月份：" + month,
+    "收入：" + (income / 100).toFixed(2),
+    "支出：" + (expense / 100).toFixed(2),
+  ].join("\n");
+  $("share-summary-status").hidden = true;
+  shareSummaryDialog.showModal();
+});
+$("close-share-summary").addEventListener("click", () => shareSummaryDialog.close());
+$("copy-month-summary").addEventListener("click", async () => {
+  const status = $("share-summary-status");
+  try {
+    await navigator.clipboard.writeText(shareSummaryText.value);
+    status.textContent = "已复制汇总，可粘贴发给对方。";
+  } catch {
+    shareSummaryText.focus();
+    shareSummaryText.select();
+    status.textContent = "请手动复制选中的汇总。";
+  }
+  status.hidden = false;
+});
+
+function parseSharedSummary(text) {
+  const match = /^日日记账月度汇总\s+月份[：:]\s*(\d{4}-(?:0[1-9]|1[0-2]))\s+收入[：:]\s*(-?\d+\.\d{2})\s+支出[：:]\s*(-?\d+\.\d{2})$/.exec(text.trim());
+  if (!match || match[1].startsWith("0000")) return null;
+  const [, period, incomeText, expenseText] = match;
+  const [income, expense] = [incomeText, expenseText].map((value) => Number(value.replace(".", "")));
+  return [income, expense].every(validPartnerAmount) ? { period, income, expense } : null;
+}
+
+$("import-partner-totals").addEventListener("click", () => {
+  importSummaryText.value = "";
+  importSummaryError.textContent = "";
+  importSummaryDialog.showModal();
+});
+$("close-import-summary").addEventListener("click", () => importSummaryDialog.close());
+$("import-summary-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  importSummaryError.textContent = "";
+  const summary = parseSharedSummary(importSummaryText.value);
+  if (!summary) {
+    importSummaryError.textContent = "请粘贴对方从「分享本月汇总」复制的完整文本。";
+    importSummaryText.focus();
+    return;
+  }
+  const { period, income, expense } = summary;
+  try {
+    const previous = readPartnerTotals()[period];
+    if (previous && (previous.income !== income || previous.expense !== expense) &&
+      !window.confirm("用这份汇总更新 " + monthLabel(period) + " 的对方收支？")) return;
+    writePartnerMonth(period, { income, expense });
+  } catch {
+    importSummaryError.textContent = "导入失败，请检查浏览器存储。";
+    return;
+  }
+  month = period;
+  importSummaryDialog.close();
+  render();
+  announce("已导入 " + monthLabel(period) + " 的对方汇总");
+});
+
 const partnerEditor = $("partner-editor");
-const partnerIncome = createAmountField($("partner-income-field"), "对方收入（元）", 10, "填写金额");
-const partnerExpense = createAmountField($("partner-expense-field"), "对方支出（元）", 10, "填写金额");
+const partnerIncome = createAmountField($("partner-income-field"), "对方收入（元）", 12, "填写金额");
+const partnerExpense = createAmountField($("partner-expense-field"), "对方支出（元）", 12, "填写金额");
 let editingPartnerMonth;
 
 $("edit-partner-totals").addEventListener("click", () => {
@@ -534,6 +627,7 @@ $("edit-partner-totals").addEventListener("click", () => {
   partnerExpense.reset(previous?.expense);
   $("partner-month").textContent = $("month-label").textContent;
   $("partner-error").textContent = "";
+  importSummaryDialog.close();
   partnerEditor.showModal();
   partnerEditor.querySelector(".record-editor-body").scrollTop = 0;
 });
@@ -549,10 +643,7 @@ $("partner-form").addEventListener("submit", (event) => {
     return;
   }
   try {
-    const totals = readPartnerTotals();
-    if (clearing) delete totals[editingPartnerMonth];
-    else totals[editingPartnerMonth] = { income, expense };
-    localStorage.setItem(partnerTotalsKey, JSON.stringify(totals));
+    writePartnerMonth(editingPartnerMonth, clearing ? null : { income, expense });
   } catch {
     $("partner-error").textContent = "保存失败，请检查浏览器存储。";
     return;

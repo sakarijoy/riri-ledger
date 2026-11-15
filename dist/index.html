@@ -54,7 +54,7 @@
             <button type="button" id="next" aria-label="下一个月"><svg><use href="#right"/></svg></button>
           </div>
           <button class="primary" id="add" type="button"><svg><use href="#plus"/></svg>记一笔</button>
-          <button class="primary" id="edit-partner-totals" type="button" hidden>录入汇总</button>
+          <button class="primary" id="import-partner-totals" type="button" hidden>导入汇总</button>
         </div>
       </header>
       <div class="page-content">
@@ -63,6 +63,9 @@
           <button id="show-combined" type="button" aria-pressed="false" aria-controls="overview-combined">两人合计</button>
         </div>
         <div id="overview-personal">
+          <div class="share-summary-action">
+            <button id="share-month-summary" type="button" class="secondary"><svg aria-hidden="true"><use href="#up"/></svg>分享本月汇总</button>
+          </div>
           <div class="summary" aria-label="本月收支" aria-live="polite">
             <article class="metric balance">
               <div class="metric-top"><span>本月结余</span><span class="metric-icon"><svg><use href="#wallet"/></svg></span></div>
@@ -167,6 +170,31 @@
       <footer class="dialog-footer">
         <p id="budget-error" class="form-error" role="status"></p>
         <button class="primary" type="submit">保存额度</button>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="share-summary-dialog" class="record-editor" aria-labelledby="share-summary-title">
+    <form>
+      <header class="dialog-header"><h2 id="share-summary-title">分享本月汇总</h2><button id="close-share-summary" type="button" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
+      <div class="record-editor-body">
+        <label class="field">汇总文本<textarea id="share-summary-text" class="summary-transfer-text" rows="4" readonly></textarea></label>
+      </div>
+      <footer class="dialog-footer">
+        <p id="share-summary-status" class="asset-form-hint" role="status" hidden></p>
+        <button id="copy-month-summary" type="button" class="primary">复制汇总</button>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="import-summary-dialog" class="record-editor" aria-labelledby="import-summary-title">
+    <form id="import-summary-form" autocomplete="off">
+      <header class="dialog-header"><h2 id="import-summary-title">导入对方汇总</h2><button id="close-import-summary" type="button" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
+      <div class="record-editor-body">
+        <label class="field">粘贴对方发来的汇总<textarea id="import-summary-text" class="summary-transfer-text" rows="4" maxlength="300" autocomplete="off" spellcheck="false"></textarea></label>
+      </div>
+      <footer class="dialog-footer">
+        <p id="import-summary-error" class="form-error" role="status"></p>
+        <button id="edit-partner-totals" type="button" class="secondary">手动填写</button>
+        <button type="submit" class="primary">导入汇总</button>
       </footer>
     </form>
   </dialog>
