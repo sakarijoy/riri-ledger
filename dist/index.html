@@ -22,6 +22,7 @@
     <symbol id="up" viewBox="0 0 24 24"><path d="M6 18 18 6M8 6h10v10"/></symbol>
     <symbol id="down" viewBox="0 0 24 24"><path d="M6 6 18 18M8 18h10V8"/></symbol>
     <symbol id="wallet" viewBox="0 0 24 24"><path d="M20 8V6a2 2 0 0 0-2-2H6a3 3 0 0 0 0 6h13a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3V7m18 7h-6a2 2 0 0 0 0 4h6"/></symbol>
+    <symbol id="people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2m2-15a3 3 0 0 1 0 6m1 3a4 4 0 0 1 3 4v2"/></symbol>
     <symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/></symbol>
     <symbol id="edit" viewBox="0 0 24 24"><path d="m5 16 11-11a2 2 0 0 1 3 3L8 19l-4 1zM14 7l3 3"/></symbol>
     <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
@@ -39,6 +40,7 @@
         <nav class="page-nav" aria-label="账本页面">
           <a id="nav-overview" href="#overview" class="nav active" aria-current="page"><svg aria-hidden="true"><use href="#grid"/></svg><span>账本概览</span></a>
           <a id="nav-assets" href="#assets" class="nav"><svg aria-hidden="true"><use href="#wallet"/></svg><span>月度资产</span></a>
+          <a id="nav-combined" href="#combined" class="nav"><svg aria-hidden="true"><use href="#people"/></svg><span>两人合计</span></a>
         </nav>
         <button class="nav" id="export" type="button"><svg><use href="#download"/></svg><span>导出本月</span></button>
       </div>
@@ -49,75 +51,52 @@
       <header class="page-header">
         <div class="header-actions">
           <div class="month-switch">
-            <button type="button" id="prev" aria-label="上一个月"><svg><use href="#left"/></svg></button>
-            <label class="month-picker"><svg><use href="#calendar"/></svg><span id="month-label"></span><input id="month" type="month" min="0001-01" max="9999-12" aria-label="选择月份"></label>
-            <button type="button" id="next" aria-label="下一个月"><svg><use href="#right"/></svg></button>
+            <button type="button" id="prev" data-month-step="-1" aria-label="上一个月"><svg><use href="#left"/></svg></button>
+            <label class="month-picker"><svg><use href="#calendar"/></svg><span id="month-label" data-month-label></span><input id="month" data-month-input type="month" min="0001-01" max="9999-12" aria-label="选择月份"></label>
+            <button type="button" id="next" data-month-step="1" aria-label="下一个月"><svg><use href="#right"/></svg></button>
           </div>
           <button class="primary" id="add" type="button"><svg><use href="#plus"/></svg>记一笔</button>
-          <button class="primary" id="import-partner-totals" type="button" hidden>导入汇总</button>
         </div>
       </header>
       <div class="page-content">
-        <div class="filters overview-switch" role="group" aria-label="查看账本范围">
-          <button id="show-personal" type="button" aria-pressed="true" aria-controls="overview-personal">我的账本</button>
-          <button id="show-combined" type="button" aria-pressed="false" aria-controls="overview-combined">两人合计</button>
+        <div class="summary" aria-label="本月收支" aria-live="polite">
+          <article class="metric balance">
+            <div class="metric-top"><span>本月结余</span><span class="metric-icon"><svg><use href="#wallet"/></svg></span></div>
+            <strong id="balance">¥0.00</strong><small>本月收入 − 本月支出</small>
+          </article>
+          <button type="button" class="metric metric-filter" data-filter="income" aria-pressed="false" aria-controls="ledger-chart ledger-details">
+            <span class="metric-top"><span>本月收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></span>
+            <strong id="income">¥0.00</strong><small id="income-count"></small>
+          </button>
+          <button type="button" class="metric metric-filter" data-filter="expense" aria-pressed="false" aria-controls="ledger-chart ledger-details">
+            <span class="metric-top"><span>本月支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></span>
+            <strong id="expense">¥0.00</strong><small id="expense-count"></small>
+          </button>
         </div>
-        <div id="overview-personal">
-          <div class="share-summary-action">
-            <button id="share-month-summary" type="button" class="secondary"><svg aria-hidden="true"><use href="#up"/></svg>分享本月汇总</button>
-          </div>
-          <div class="summary" aria-label="本月收支" aria-live="polite">
-            <article class="metric balance">
-              <div class="metric-top"><span>本月结余</span><span class="metric-icon"><svg><use href="#wallet"/></svg></span></div>
-              <strong id="balance">¥0.00</strong><small>本月收入 − 本月支出</small>
-            </article>
-            <button type="button" class="metric metric-filter" data-filter="income" aria-pressed="false" aria-controls="ledger-chart ledger-details">
-              <span class="metric-top"><span>本月收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></span>
-              <strong id="income">¥0.00</strong><small id="income-count"></small>
-            </button>
-            <button type="button" class="metric metric-filter" data-filter="expense" aria-pressed="false" aria-controls="ledger-chart ledger-details">
-              <span class="metric-top"><span>本月支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></span>
-              <strong id="expense">¥0.00</strong><small id="expense-count"></small>
-            </button>
-          </div>
-          <section class="panel monthly-limit" aria-labelledby="monthly-limit-title">
-            <div><h2 id="monthly-limit-title">本月支出额度</h2><p id="monthly-limit-value" aria-live="polite">未设置</p></div>
-            <button id="edit-budget" class="secondary" type="button">设置额度</button>
-          </section>
-          <div class="detail-grid">
-            <section id="ledger-chart" class="panel breakdown" aria-labelledby="chart-title">
-              <div class="panel-heading"><div><h2 id="chart-title">额度概览</h2><p id="chart-description">本月净支出占计划额度的比例</p></div></div>
-              <div class="ring" id="ring"><div><small id="ring-label">未设置额度</small><strong id="ring-total">—</strong></div></div>
-              <div id="legend" class="legend"></div>
-            </section>
-            <section id="ledger-details" class="panel ledger" aria-labelledby="ledger-title">
-              <div class="panel-heading">
-                <div><h2 id="ledger-title">账单明细</h2><p id="ledger-count"></p></div>
-                <div class="filters" aria-label="筛选收支">
-                  <button type="button" data-filter="all" aria-pressed="true">全部</button>
-                  <button type="button" data-filter="expense" aria-pressed="false">支出</button>
-                  <button type="button" data-filter="income" aria-pressed="false">收入</button>
-                </div>
-              </div>
-              <label class="field ledger-search">搜索本月账单<input id="ledger-search" type="search" autocomplete="off" placeholder="备注、地点或分类"></label>
-              <div id="entries"></div>
-            </section>
-          </div>
-          <div id="demo-bar" class="demo-bar" hidden><span><svg><use href="#spark"/></svg>正在查看示例账本</span><button id="clear-demo" type="button">开始记自己的账 <svg><use href="#right"/></svg></button></div>
-        </div>
-        <section id="overview-combined" aria-label="两人当月收支合计" hidden>
-          <div class="summary combined-summary" aria-live="polite">
-            <article class="metric">
-              <div class="metric-top"><span>两人总收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></div>
-              <strong id="combined-income">—</strong>
-            </article>
-            <article class="metric">
-              <div class="metric-top"><span>两人总支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></div>
-              <strong id="combined-expense">—</strong>
-            </article>
-          </div>
-          <p id="combined-status" class="backup-note" role="status"></p>
+        <section class="panel monthly-limit" aria-labelledby="monthly-limit-title">
+          <div><h2 id="monthly-limit-title">本月支出额度</h2><p id="monthly-limit-value" aria-live="polite">未设置</p></div>
+          <button id="edit-budget" class="secondary" type="button">设置额度</button>
         </section>
+        <div class="detail-grid">
+          <section id="ledger-chart" class="panel breakdown" aria-labelledby="chart-title">
+            <div class="panel-heading"><div><h2 id="chart-title">额度概览</h2><p id="chart-description">本月净支出占计划额度的比例</p></div></div>
+            <div class="ring" id="ring"><div><small id="ring-label">未设置额度</small><strong id="ring-total">—</strong></div></div>
+            <div id="legend" class="legend"></div>
+          </section>
+          <section id="ledger-details" class="panel ledger" aria-labelledby="ledger-title">
+            <div class="panel-heading">
+              <div><h2 id="ledger-title">账单明细</h2><p id="ledger-count"></p></div>
+              <div class="filters" aria-label="筛选收支">
+                <button type="button" data-filter="all" aria-pressed="true">全部</button>
+                <button type="button" data-filter="expense" aria-pressed="false">支出</button>
+                <button type="button" data-filter="income" aria-pressed="false">收入</button>
+              </div>
+            </div>
+            <label class="field ledger-search">搜索本月账单<input id="ledger-search" type="search" autocomplete="off" placeholder="备注、地点或分类"></label>
+            <div id="entries"></div>
+          </section>
+        </div>
+        <div id="demo-bar" class="demo-bar" hidden><span><svg><use href="#spark"/></svg>正在查看示例账本</span><button id="clear-demo" type="button">开始记自己的账 <svg><use href="#right"/></svg></button></div>
       </div>
     </main>
     <main id="assets" aria-labelledby="assets-page-name" hidden>
@@ -144,6 +123,35 @@
           <div id="asset-cards" class="asset-cards"></div>
           <div class="empty" id="no-assets"><svg aria-hidden="true"><use href="#wallet"/></svg><p>还没有资产记录</p></div>
         </section>
+      </div>
+    </main>
+    <main id="combined" aria-labelledby="combined-page-name" hidden>
+      <h2 id="combined-page-name" class="sr-only">两人合计</h2>
+      <header class="page-header">
+        <div class="header-actions">
+          <div class="month-switch">
+            <button type="button" id="combined-prev" data-month-step="-1" aria-label="上一个月"><svg aria-hidden="true"><use href="#left"/></svg></button>
+            <label class="month-picker"><svg aria-hidden="true"><use href="#calendar"/></svg><span id="combined-month-label" data-month-label></span><input id="combined-month" data-month-input type="month" min="0001-01" max="9999-12" aria-label="选择月份"></label>
+            <button type="button" id="combined-next" data-month-step="1" aria-label="下一个月"><svg aria-hidden="true"><use href="#right"/></svg></button>
+          </div>
+          <button class="primary" id="import-partner-totals" type="button">导入汇总</button>
+        </div>
+      </header>
+      <div class="page-content">
+        <div class="summary combined-summary" aria-label="两人当月收支合计" aria-live="polite">
+          <article class="metric">
+            <div class="metric-top"><span>两人总收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></div>
+            <strong id="combined-income">—</strong>
+          </article>
+          <article class="metric">
+            <div class="metric-top"><span>两人总支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></div>
+            <strong id="combined-expense">—</strong>
+          </article>
+        </div>
+        <p id="combined-status" class="backup-note" role="status"></p>
+        <div class="share-summary-action">
+          <button id="share-month-summary" type="button" class="secondary"><svg aria-hidden="true"><use href="#up"/></svg>分享个人汇总</button>
+        </div>
       </div>
     </main>
     <p id="notice" class="notice" role="status"></p>
@@ -175,7 +183,7 @@
   </dialog>
   <dialog id="share-summary-dialog" class="record-editor" aria-labelledby="share-summary-title">
     <form>
-      <header class="dialog-header"><h2 id="share-summary-title">分享本月汇总</h2><button id="close-share-summary" type="button" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
+      <header class="dialog-header"><h2 id="share-summary-title">分享个人汇总</h2><button id="close-share-summary" type="button" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
       <div class="record-editor-body">
         <label class="field">汇总文本<textarea id="share-summary-text" class="summary-transfer-text" rows="4" readonly></textarea></label>
       </div>

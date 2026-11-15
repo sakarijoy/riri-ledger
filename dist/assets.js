@@ -532,10 +532,11 @@
     if (columnsDialog.open) renderColumnEditor();
   });
   function route() {
+    const pages = ["overview", "assets", "combined"];
     const hash = window.location.hash.slice(1);
-    const page = hash === "assets" ? "assets" : "overview";
-    $("export").hidden = page !== "overview" || overviewMode === "combined";
-    for (const id of ["overview", "assets"]) {
+    const page = pages.includes(hash) ? hash : "overview";
+    $("export").hidden = page !== "overview";
+    for (const id of pages) {
       const active = id === page;
       $(id).hidden = !active;
       const link = $("nav-" + id);
@@ -544,6 +545,7 @@
       else link.removeAttribute("aria-current");
     }
     if (page === "assets") renderAssets();
+    if (page === "combined") render();
   }
   window.addEventListener("hashchange", route);
   route();

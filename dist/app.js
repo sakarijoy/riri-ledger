@@ -28,7 +28,6 @@ const today = new Intl.DateTimeFormat("sv-SE", {
 }).format();
 let month = today.slice(0, 7);
 let filter = "all";
-let overviewMode = "personal";
 let editingId = null;
 let noticeTimer;
 let entryPoint = null;
@@ -40,6 +39,9 @@ const form = $("entry-form");
 const fields = form.elements;
 const editor = $("editor");
 const filters = document.querySelectorAll("[data-filter]");
+const monthInputs = document.querySelectorAll("[data-month-input]");
+const monthLabels = document.querySelectorAll("[data-month-label]");
+const monthButtons = document.querySelectorAll("[data-month-step]");
 const demo = [
   ["expense", "餐饮", 4200, 14, "午餐"],
   ["expense", "购物", 16800, 13, "日用品"],
@@ -244,20 +246,6 @@ function renderCombined(income, expense) {
   $("combined-status").textContent = partner ? "" : message;
 }
 
-function showOverview(mode) {
-  overviewMode = mode;
-  const combined = mode === "combined";
-  $("show-personal").setAttribute("aria-pressed", String(!combined));
-  $("show-combined").setAttribute("aria-pressed", String(combined));
-  $("overview-personal").hidden = combined;
-  $("overview-combined").hidden = !combined;
-  $("add").hidden = combined;
-  $("import-partner-totals").hidden = !combined;
-  $("export").hidden = combined || $("overview").hidden;
-  $("overview").querySelector(".page-content").scrollTop = 0;
-  render();
-}
-
 function monthlyBudget(month, budgets) {
   const saved = budgets[month];
   const amount = typeof saved === "number"
@@ -310,13 +298,15 @@ function render() {
   const expenses = entries.filter((entry) => entry.type === "expense");
   const income = sumAmounts(incomes);
   const expense = sumAmounts(expenses);
-  if (overviewMode === "combined") {
+  if (!$("combined").hidden) {
     renderCombined(records === null ? 0 : income, records === null ? 0 : expense);
   }
-  $("month").value = month;
-  $("month-label").textContent = monthLabel(month);
-  $("prev").disabled = month === "0001-01";
-  $("next").disabled = month === "9999-12";
+  const label = monthLabel(month);
+  monthInputs.forEach((input) => { input.value = month; });
+  monthLabels.forEach((element) => { element.textContent = label; });
+  monthButtons.forEach((button) => {
+    button.disabled = month === (button.dataset.monthStep === "-1" ? "0001-01" : "9999-12");
+  });
   $("balance").textContent = money(income - expense);
   $("income").textContent = money(income);
   $("expense").textContent = money(expense);
@@ -504,7 +494,7 @@ $("edit-budget").addEventListener("click", () => {
   }
   editingBudgetMonth = month;
   budgetAmount.reset(limit);
-  $("budget-month").textContent = $("month-label").textContent + " · 清空金额可取消额度";
+  $("budget-month").textContent = monthLabel(month) + " · 清空金额可取消额度";
   $("budget-error").textContent = "";
   budgetEditor.showModal();
   $("budget-editor-body").scrollTop = 0;
@@ -589,7 +579,7 @@ $("import-summary-form").addEventListener("submit", (event) => {
   importSummaryError.textContent = "";
   const summary = parseSharedSummary(importSummaryText.value);
   if (!summary) {
-    importSummaryError.textContent = "请粘贴对方从「分享本月汇总」复制的完整文本。";
+    importSummaryError.textContent = "请粘贴对方从「分享个人汇总」复制的完整文本。";
     importSummaryText.focus();
     return;
   }
@@ -625,7 +615,7 @@ $("edit-partner-totals").addEventListener("click", () => {
   editingPartnerMonth = month;
   partnerIncome.reset(previous?.income);
   partnerExpense.reset(previous?.expense);
-  $("partner-month").textContent = $("month-label").textContent;
+  $("partner-month").textContent = monthLabel(month);
   $("partner-error").textContent = "";
   importSummaryDialog.close();
   partnerEditor.showModal();
@@ -916,16 +906,13 @@ $("export").addEventListener("click", () => {
 });
 
 $("add").addEventListener("click", () => openEditor());
-$("show-personal").addEventListener("click", () => showOverview("personal"));
-$("show-combined").addEventListener("click", () => showOverview("combined"));
 $("ledger-search").addEventListener("input", () => renderEntries(monthRecords()));
 $("close-editor").addEventListener("click", () => editor.close());
-$("prev").addEventListener("click", () => shiftMonth(-1));
-$("next").addEventListener("click", () => shiftMonth(1));
-$("month").addEventListener("change", (event) => {
-  if (event.target.value && event.target.validity.valid) month = event.target.value;
+monthButtons.forEach((button) => button.addEventListener("click", () => shiftMonth(Number(button.dataset.monthStep))));
+monthInputs.forEach((input) => input.addEventListener("change", () => {
+  if (input.value && input.validity.valid) month = input.value;
   render();
-});
+}));
 form.querySelectorAll('input[name="type"]').forEach((input) => {
   input.addEventListener("change", () => updateCategories());
 });
