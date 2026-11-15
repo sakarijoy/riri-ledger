@@ -528,30 +528,56 @@ function showPhoto(photo) {
   else $("photo-preview").removeAttribute("src");
 }
 
-async function preparePhoto(file) {
-  const url = URL.createObjectURL(file);
-  try {
+function loadPhoto(url) {
+  return new Promise((resolve, reject) => {
     const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
     image.src = url;
-    await image.decode();
-    return encodePhoto(image, image.naturalWidth, image.naturalHeight);
+  });
+}
+
+function readPhotoDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reader.onabort = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function preparePhoto(file) {
+  let url;
+  try {
+    let image;
+    try {
+      url = URL.createObjectURL(file);
+      image = await loadPhoto(url);
+    } catch {
+      try {
+        image = await loadPhoto(await readPhotoDataUrl(file));
+      } catch {
+        return { error: "无法读取这张照片，请重新拍照或从相册选择 JPG 或 PNG 图片。" };
+      }
+    }
+    return { photo: encodePhoto(image, image.naturalWidth, image.naturalHeight) };
   } finally {
-    URL.revokeObjectURL(url);
+    if (url) URL.revokeObjectURL(url);
   }
 }
 
 function encodePhoto(source, width, height) {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d", { alpha: false });
-  for (const maxSide of [1400, 1050, 750]) {
+  for (const [maxSide, quality] of [[1400, 0.76], [1050, 0.76], [750, 0.76], [560, 0.66], [400, 0.58], [280, 0.50]]) {
     const scale = Math.min(1, maxSide / Math.max(width, height));
     canvas.width = Math.max(1, Math.round(width * scale));
     canvas.height = Math.max(1, Math.round(height * scale));
     context.fillStyle = "#fff";
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(source, 0, 0, canvas.width, canvas.height);
-    const photo = canvas.toDataURL("image/jpeg", 0.76);
-    if (photo.length <= 160000) return photo;
+    const photo = canvas.toDataURL("image/jpeg", quality);
+    if (photo.startsWith("data:image/jpeg;base64,") && photo.length <= 160000) return photo;
   }
   throw new Error("Photo exceeds storage limit");
 }
@@ -565,21 +591,21 @@ async function selectPhoto(event) {
   const request = ++photoRequest;
   const status = $("photo-status");
   const saveButton = $("save-entry");
-  if (file.size > 20 * 1024 * 1024) {
-    status.textContent = "请选择 20 MB 以内的照片。";
+  if (!file.size || file.size > 20 * 1024 * 1024) {
+    status.textContent = file.size ? "请选择 20 MB 以内的照片。" : "没有读取到照片，请重新拍照或从相册选择。";
     saveButton.disabled = false;
     return;
   }
   saveButton.disabled = true;
   status.textContent = "正在处理照片…";
   try {
-    const photo = await preparePhoto(file);
+    const { photo, error } = await preparePhoto(file);
     if (editor.open && request === photoRequest) {
-      showPhoto(photo);
-      status.textContent = "照片将在保存记录时附加到账单。";
+      if (photo) showPhoto(photo);
+      status.textContent = error ?? "照片将在保存记录时附加到账单。";
     }
   } catch {
-    if (editor.open && request === photoRequest) status.textContent = "无法处理这张照片，请换一张再试。";
+    if (editor.open && request === photoRequest) status.textContent = "照片压缩失败，请试试分辨率较低的照片。";
   } finally {
     if (editor.open && request === photoRequest) saveButton.disabled = false;
   }
