@@ -95,6 +95,10 @@ h2 { font-size: 17px; letter-spacing: -.02em; }
 .share-summary-action { display: flex; justify-content: end; margin-bottom: 10px; }
 .share-summary-action button { display: inline-flex; align-items: center; gap: 5px; }
 .share-summary-action svg { width: 15px; height: 15px; }
+.github-sync { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.github-sync .backup-note { margin: 4px 0 0; overflow-wrap: anywhere; }
+.github-sync-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.github-sync-remember { display: flex; align-items: center; gap: 6px; font-size: .875rem; }
 .field .summary-transfer-text { height: auto; min-height: 126px; resize: vertical; }
 #share-summary-status { flex-basis: 100%; margin: 0; }
 .entry { display: grid; grid-template-columns: 37px minmax(0,1fr) auto 16px; width: 100%; align-items: center; gap: 10px; min-height: 57px; padding: 8px 2px; border: 0; border-top: 1px solid #eaf2f3; background: transparent; text-align: left; }

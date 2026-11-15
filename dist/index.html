@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="style.css">
   <script defer src="app.js"></script>
   <script defer src="assets.js"></script>
+  <script defer src="github-sync.js"></script>
 </head>
 <body>
   <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -152,6 +153,16 @@
         <div class="share-summary-action">
           <button id="share-month-summary" type="button" class="secondary"><svg aria-hidden="true"><use href="#up"/></svg>分享个人汇总</button>
         </div>
+        <section class="panel github-sync" aria-labelledby="github-sync-title">
+          <div>
+            <h2 id="github-sync-title">GitHub 同步</h2>
+            <p id="github-sync-status" class="backup-note" role="status">尚未连接私有汇总仓库。</p>
+          </div>
+          <div class="github-sync-actions">
+            <button id="open-github-sync" type="button" class="secondary">连接设置</button>
+            <button id="sync-github-now" type="button" class="secondary" hidden>立即同步</button>
+          </div>
+        </section>
       </div>
     </main>
     <p id="notice" class="notice" role="status"></p>
@@ -178,6 +189,23 @@
       <footer class="dialog-footer">
         <p id="budget-error" class="form-error" role="status"></p>
         <button class="primary" type="submit">保存额度</button>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="github-sync-dialog" class="record-editor" aria-labelledby="github-sync-dialog-title">
+    <form id="github-sync-form" autocomplete="off">
+      <header class="dialog-header"><h2 id="github-sync-dialog-title">连接 GitHub 私有仓库</h2><button id="close-github-sync" type="button" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
+      <div class="record-editor-body">
+        <p class="backup-note">两人填写同一个私有仓库，各自输入自己的细粒度令牌。连接后会发布本机账本的月度收支汇总。</p>
+        <label class="field">共享仓库<input name="repository" type="text" placeholder="组织名/仓库名" required maxlength="144" autocapitalize="none" spellcheck="false"></label>
+        <label class="field">对方的 GitHub 用户名<input name="partner" type="text" required maxlength="39" autocapitalize="none" spellcheck="false"></label>
+        <label class="field">自己的细粒度令牌<input name="token" type="password" required maxlength="255" autocomplete="off" placeholder="仅授权共享仓库的 Contents 读写"></label>
+        <label class="github-sync-remember"><input name="remember" type="checkbox">在这台设备上记住令牌</label>
+      </div>
+      <footer class="dialog-footer">
+        <p id="github-sync-error" class="form-error" role="status"></p>
+        <button id="disconnect-github-sync" type="button" class="danger" hidden>断开连接</button>
+        <button id="connect-github-sync" type="submit" class="primary">连接并同步</button>
       </footer>
     </form>
   </dialog>

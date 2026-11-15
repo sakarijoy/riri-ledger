@@ -545,7 +545,10 @@
       else link.removeAttribute("aria-current");
     }
     if (page === "assets") renderAssets();
-    if (page === "combined") render();
+    if (page === "combined") {
+      render();
+      document.dispatchEvent(new Event("combinedpageopen"));
+    }
   }
   window.addEventListener("hashchange", route);
   route();
@@ -709,6 +712,7 @@
     filter = "all";
     render();
     route();
+    document.dispatchEvent(new Event("ledgerchange"));
     backupDialog.close();
     announce("已恢复账本");
   });

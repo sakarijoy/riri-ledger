@@ -8,15 +8,17 @@ const output = new URL("./docs/", import.meta.url);
 const read = (dir, name) => readFile(new URL(name, dir), "utf8");
 const write = (name, text) => writeFile(new URL(name, output), text);
 
-const [html, css, app, assets, worker] = await Promise.all([
+const [html, css, app, assets, githubSync, worker] = await Promise.all([
   read(input, "index.html"),
   read(input, "style.css"),
   read(input, "app.js"),
   read(input, "assets.js"),
+  read(input, "github-sync.js"),
   read(pwa, "sw.js"),
 ]);
 
-for (const code of [app, assets]) {
+const scripts = [app, assets, githubSync];
+for (const code of scripts) {
   new Script(code);
   if (/<\/script/i.test(code)) throw new Error("Cannot embed a script containing a closing script tag.");
 }
@@ -24,8 +26,8 @@ for (const code of [app, assets]) {
 const offline = html
   .replace("  <title>", '  <meta name="robots" content="noindex">\n  <title>')
   .replace('<link rel="stylesheet" href="style.css">', () => `<style>\n${css}\n</style>`)
-  .replace(/  <script defer src="(?:app|assets)\.js"><\/script>\r?\n/g, "")
-  .replace("</body>", () => `<script>\n${app}\n</script>\n<script>\n${assets}\n</script>\n</body>`);
+  .replace(/  <script defer src="(?:app|assets|github-sync)\.js"><\/script>\r?\n/g, "")
+  .replace("</body>", () => scripts.map((code) => `<script>\n${code}\n</script>\n`).join("") + "</body>");
 
 const version = createHash("sha256").update(offline).update(worker).digest("hex").slice(0, 16);
 const online = offline.replace("</head>", [

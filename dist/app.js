@@ -76,6 +76,7 @@ function load() {
 }
 
 let records = load();
+let githubPartnerTotals = null;
 window.addEventListener("storage", (event) => {
   if (event.key === storageKey || event.key === null) {
     records = load();
@@ -88,10 +89,11 @@ function save(next) {
   try {
     localStorage.setItem(storageKey, JSON.stringify(next));
     records = next;
-    return true;
   } catch {
     return false;
   }
+  document.dispatchEvent(new Event("ledgerchange"));
+  return true;
 }
 
 function money(cents) {
@@ -235,9 +237,11 @@ function writePartnerMonth(period, summary) {
 
 function renderCombined(income, expense) {
   let partner;
-  let message = "请导入对方发来的月度收支汇总。";
+  let message = githubPartnerTotals === null
+    ? "请连接 GitHub，或导入对方发来的月度收支汇总。"
+    : "对方尚未同步该月的收支汇总。";
   try {
-    partner = readPartnerTotals()[month];
+    partner = githubPartnerTotals?.[month] ?? readPartnerTotals()[month];
   } catch {
     message = "无法读取对方的收支汇总。";
   }
