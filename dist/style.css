@@ -91,17 +91,28 @@ h2 { font-size: 17px; letter-spacing: -.02em; }
 .filters { display: flex; padding: 3px; gap: 2px; border-radius: 8px; background: #edf4f6; white-space: nowrap; }
 .filters button { border: 0; background: transparent; border-radius: 6px; padding: 5px 9px; font-size: 12px; color: var(--muted); }
 .filters button[aria-pressed=true] { background: white; color: #09636a; font-weight: 660; box-shadow: 0 1px 4px #153d4417; }
-.combined-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.share-summary-action { display: flex; justify-content: end; margin-bottom: 10px; }
-.share-summary-action button { display: inline-flex; align-items: center; gap: 5px; }
-.share-summary-action svg { width: 15px; height: 15px; }
+.combined-summary .metric-icon.expense { color: #24649a; background: #e9f3ff; }
+.combined-trend .panel-heading { flex-wrap: wrap; }
+.combined-trend-key { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: .75rem; white-space: nowrap; }
+.combined-trend-key span { display: inline-flex; align-items: center; gap: 5px; }
+.combined-trend-key span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--trend-color); }
+.combined-income { --trend-color: #24866b; }
+.combined-expense { --trend-color: #3b7bb1; }
+.combined-trend-list { list-style: none; padding: 0; margin: 0; }
+.combined-trend-row { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.combined-trend-month { font-size: .8125rem; font-weight: 650; white-space: nowrap; }
+.combined-trend-values { display: grid; gap: 4px; }
+.combined-trend-value { display: grid; grid-template-columns: minmax(0, 1fr) clamp(5.5rem, 18vw, 9rem); align-items: center; gap: 8px; }
+.combined-trend-amount { font-size: .75rem; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.combined-trend-track { position: relative; height: 6px; border-radius: 4px; background: #eef3f6; }
+.combined-trend-track::before { content: ""; position: absolute; inset: 0 auto 0 var(--zero-position); width: 1px; background: #aec4cd; }
+.combined-trend-fill { position: absolute; top: 0; bottom: 0; left: var(--bar-start); width: var(--bar-size); border-radius: inherit; background: var(--trend-color); }
 .github-sync { display: grid; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .github-sync h3 { margin: 0; font-size: .875rem; }
 .github-sync .backup-note { margin: 4px 0 0; overflow-wrap: anywhere; }
 .github-sync-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .github-sync-remember { display: flex; align-items: center; gap: 6px; font-size: .875rem; }
 .field .summary-transfer-text { height: auto; min-height: 126px; resize: vertical; }
-#share-summary-status { flex-basis: 100%; margin: 0; }
 .entry { display: grid; grid-template-columns: 37px minmax(0,1fr) auto 16px; width: 100%; align-items: center; gap: 10px; min-height: 57px; padding: 8px 2px; border: 0; border-top: 1px solid #eaf2f3; background: transparent; text-align: left; }
 .entry:hover { background: #f4fafb; }
 .entry.sample { opacity: 1; }

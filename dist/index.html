@@ -140,19 +140,33 @@
       </header>
       <div class="page-content">
         <div class="summary combined-summary" aria-label="两人当月收支合计" aria-live="polite">
+          <article class="metric balance">
+            <div class="metric-top"><span>两人本月结余</span><span class="metric-icon"><svg aria-hidden="true"><use href="#wallet"/></svg></span></div>
+            <strong id="combined-balance">—</strong>
+            <small>总收入 − 总支出</small>
+          </article>
           <article class="metric">
             <div class="metric-top"><span>两人总收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></div>
             <strong id="combined-income">—</strong>
+            <small id="combined-income-change"></small>
           </article>
           <article class="metric">
             <div class="metric-top"><span>两人总支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></div>
             <strong id="combined-expense">—</strong>
+            <small id="combined-expense-change"></small>
           </article>
         </div>
         <p id="combined-status" class="backup-note" role="status"></p>
-        <div class="share-summary-action">
-          <button id="share-month-summary" type="button" class="secondary"><svg aria-hidden="true"><use href="#up"/></svg>分享个人汇总</button>
-        </div>
+        <section class="panel combined-trend" aria-labelledby="combined-trend-title">
+          <div class="panel-heading">
+            <div><h2 id="combined-trend-title">近六个月收支</h2><p>截至所选月份</p></div>
+            <div id="combined-trend-key" class="combined-trend-key" aria-hidden="true" hidden>
+              <span class="combined-income">收入</span><span class="combined-expense">支出</span>
+            </div>
+          </div>
+          <p id="combined-trend-empty" class="backup-note">收到对方的月度汇总后，这里会显示收支对比。</p>
+          <ul id="combined-trend-list" class="combined-trend-list" hidden></ul>
+        </section>
       </div>
     </main>
     <p id="notice" class="notice" role="status"></p>
@@ -206,18 +220,6 @@
         <p id="github-sync-error" class="form-error" role="status"></p>
         <button id="disconnect-github-sync" type="button" class="danger" hidden>断开连接</button>
         <button id="connect-github-sync" type="submit" class="primary">连接并同步</button>
-      </footer>
-    </form>
-  </dialog>
-  <dialog id="share-summary-dialog" class="record-editor" aria-labelledby="share-summary-title">
-    <form>
-      <header class="dialog-header"><h2 id="share-summary-title">分享个人汇总</h2><button id="close-share-summary" type="button" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
-      <div class="record-editor-body">
-        <label class="field">汇总文本<textarea id="share-summary-text" class="summary-transfer-text" rows="4" readonly></textarea></label>
-      </div>
-      <footer class="dialog-footer">
-        <p id="share-summary-status" class="asset-form-hint" role="status" hidden></p>
-        <button id="copy-month-summary" type="button" class="primary">复制汇总</button>
       </footer>
     </form>
   </dialog>

@@ -235,19 +235,84 @@ function writePartnerMonth(period, summary) {
   localStorage.setItem(partnerTotalsKey, JSON.stringify(totals));
 }
 
-function renderCombined(income, expense) {
-  let partner;
+function renderCombined() {
+  let imported = {};
   let message = githubPartnerTotals === null
     ? "可导入对方发来的月度收支汇总。"
     : "对方尚未同步该月的收支汇总。";
   try {
-    partner = githubPartnerTotals?.[month] ?? readPartnerTotals()[month];
+    imported = readPartnerTotals() ?? {};
   } catch {
     message = "无法读取对方的收支汇总。";
   }
-  $("combined-income").textContent = partner ? money(income + partner.income) : "—";
-  $("combined-expense").textContent = partner ? money(expense + partner.expense) : "—";
-  $("combined-status").textContent = partner ? "" : message;
+
+  const history = new Map();
+  for (let period = month; history.size < 6; period = shiftedMonth(period, -1)) {
+    const partner = githubPartnerTotals?.[period] ?? imported[period];
+    history.set(period, partner ? { income: partner.income, expense: partner.expense } : null);
+    if (period === "0001-01") break;
+  }
+  for (const entry of records ?? []) {
+    const totals = history.get(entry.date.slice(0, 7));
+    if (totals) totals[entry.type] += entry.amount;
+  }
+
+  const current = history.get(month);
+  const previous = month === "0001-01" ? null : history.get(shiftedMonth(month, -1));
+  $("combined-balance").textContent = current ? money(current.income - current.expense) : "—";
+  for (const type of ["income", "expense"]) {
+    $("combined-" + type).textContent = current ? money(current[type]) : "—";
+    const change = current && previous ? current[type] - previous[type] : null;
+    $("combined-" + type + "-change").textContent = change === null ? ""
+      : change === 0 ? "较上月持平" : "较上月 " + (change > 0 ? "+" : "") + money(change);
+  }
+  $("combined-status").textContent = current ? "" : message;
+  renderCombinedTrend(Array.from(history).filter(([, totals]) => totals).reverse());
+}
+
+function renderCombinedTrend(rows) {
+  const list = $("combined-trend-list");
+  list.replaceChildren();
+  list.hidden = !rows.length;
+  $("combined-trend-key").hidden = !rows.length;
+  $("combined-trend-empty").hidden = Boolean(rows.length);
+  const amounts = rows.flatMap(([, totals]) => [totals.income, totals.expense]);
+  const min = Math.min(0, ...amounts);
+  const max = Math.max(0, ...amounts);
+  const range = Math.max(1, max - min);
+  list.style.setProperty("--zero-position", ((0 - min) / range) * 100 + "%");
+  for (const [period, totals] of rows) {
+    const row = document.createElement("li");
+    row.className = "combined-trend-row";
+    const label = document.createElement("span");
+    label.className = "combined-trend-month";
+    label.textContent = monthLabel(period);
+    const values = document.createElement("div");
+    values.className = "combined-trend-values";
+    for (const [type, name] of [["income", "收入"], ["expense", "支出"]]) {
+      const amount = totals[type];
+      const value = document.createElement("div");
+      value.className = "combined-trend-value combined-" + type;
+      const track = document.createElement("span");
+      track.className = "combined-trend-track";
+      track.setAttribute("aria-hidden", "true");
+      const fill = document.createElement("span");
+      fill.className = "combined-trend-fill";
+      fill.style.setProperty("--bar-start", ((Math.min(0, amount) - min) / range) * 100 + "%");
+      fill.style.setProperty("--bar-size", (Math.abs(amount) / range) * 100 + "%");
+      track.append(fill);
+      const formatted = document.createElement("span");
+      formatted.className = "combined-trend-amount";
+      const accessibleLabel = document.createElement("span");
+      accessibleLabel.className = "sr-only";
+      accessibleLabel.textContent = name + " ";
+      formatted.append(accessibleLabel, money(amount));
+      value.append(track, formatted);
+      values.append(value);
+    }
+    row.append(label, values);
+    list.append(row);
+  }
 }
 
 function monthlyBudget(month, budgets) {
@@ -302,9 +367,7 @@ function render() {
   const expenses = entries.filter((entry) => entry.type === "expense");
   const income = sumAmounts(incomes);
   const expense = sumAmounts(expenses);
-  if (!$("combined").hidden) {
-    renderCombined(records === null ? 0 : income, records === null ? 0 : expense);
-  }
+  if (!$("combined").hidden) renderCombined();
   const label = monthLabel(month);
   monthInputs.forEach((input) => { input.value = month; });
   monthLabels.forEach((element) => { element.textContent = label; });
@@ -527,42 +590,10 @@ $("budget-form").addEventListener("submit", (event) => {
   announce(amount === null ? "已取消支出额度" : "已保存支出额度");
 });
 
-const shareSummaryDialog = $("share-summary-dialog");
-const shareSummaryText = $("share-summary-text");
 const importSummaryDialog = $("import-summary-dialog");
 const importSummaryText = $("import-summary-text");
 const importSummaryError = $("import-summary-error");
 
-$("share-month-summary").addEventListener("click", () => {
-  const entries = records === null ? [] : monthRecords();
-  const income = sumAmounts(entries.filter((entry) => entry.type === "income"));
-  const expense = sumAmounts(entries.filter((entry) => entry.type === "expense"));
-  if (![income, expense].every(validPartnerAmount)) {
-    announce("本月金额超出可分享范围。");
-    return;
-  }
-  shareSummaryText.value = [
-    "日日记账月度汇总",
-    "月份：" + month,
-    "收入：" + (income / 100).toFixed(2),
-    "支出：" + (expense / 100).toFixed(2),
-  ].join("\n");
-  $("share-summary-status").hidden = true;
-  shareSummaryDialog.showModal();
-});
-$("close-share-summary").addEventListener("click", () => shareSummaryDialog.close());
-$("copy-month-summary").addEventListener("click", async () => {
-  const status = $("share-summary-status");
-  try {
-    await navigator.clipboard.writeText(shareSummaryText.value);
-    status.textContent = "已复制汇总，可粘贴发给对方。";
-  } catch {
-    shareSummaryText.focus();
-    shareSummaryText.select();
-    status.textContent = "请手动复制选中的汇总。";
-  }
-  status.hidden = false;
-});
 
 function parseSharedSummary(text) {
   const match = /^日日记账月度汇总\s+月份[：:]\s*(\d{4}-(?:0[1-9]|1[0-2]))\s+收入[：:]\s*(-?\d+\.\d{2})\s+支出[：:]\s*(-?\d+\.\d{2})$/.exec(text.trim());
@@ -583,7 +614,7 @@ $("import-summary-form").addEventListener("submit", (event) => {
   importSummaryError.textContent = "";
   const summary = parseSharedSummary(importSummaryText.value);
   if (!summary) {
-    importSummaryError.textContent = "请粘贴对方从「分享个人汇总」复制的完整文本。";
+    importSummaryError.textContent = "请粘贴完整的日日记账月度汇总文本。";
     importSummaryText.focus();
     return;
   }

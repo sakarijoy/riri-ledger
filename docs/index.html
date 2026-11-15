@@ -101,17 +101,28 @@ h2 { font-size: 17px; letter-spacing: -.02em; }
 .filters { display: flex; padding: 3px; gap: 2px; border-radius: 8px; background: #edf4f6; white-space: nowrap; }
 .filters button { border: 0; background: transparent; border-radius: 6px; padding: 5px 9px; font-size: 12px; color: var(--muted); }
 .filters button[aria-pressed=true] { background: white; color: #09636a; font-weight: 660; box-shadow: 0 1px 4px #153d4417; }
-.combined-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.share-summary-action { display: flex; justify-content: end; margin-bottom: 10px; }
-.share-summary-action button { display: inline-flex; align-items: center; gap: 5px; }
-.share-summary-action svg { width: 15px; height: 15px; }
+.combined-summary .metric-icon.expense { color: #24649a; background: #e9f3ff; }
+.combined-trend .panel-heading { flex-wrap: wrap; }
+.combined-trend-key { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: .75rem; white-space: nowrap; }
+.combined-trend-key span { display: inline-flex; align-items: center; gap: 5px; }
+.combined-trend-key span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--trend-color); }
+.combined-income { --trend-color: #24866b; }
+.combined-expense { --trend-color: #3b7bb1; }
+.combined-trend-list { list-style: none; padding: 0; margin: 0; }
+.combined-trend-row { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.combined-trend-month { font-size: .8125rem; font-weight: 650; white-space: nowrap; }
+.combined-trend-values { display: grid; gap: 4px; }
+.combined-trend-value { display: grid; grid-template-columns: minmax(0, 1fr) clamp(5.5rem, 18vw, 9rem); align-items: center; gap: 8px; }
+.combined-trend-amount { font-size: .75rem; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.combined-trend-track { position: relative; height: 6px; border-radius: 4px; background: #eef3f6; }
+.combined-trend-track::before { content: ""; position: absolute; inset: 0 auto 0 var(--zero-position); width: 1px; background: #aec4cd; }
+.combined-trend-fill { position: absolute; top: 0; bottom: 0; left: var(--bar-start); width: var(--bar-size); border-radius: inherit; background: var(--trend-color); }
 .github-sync { display: grid; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .github-sync h3 { margin: 0; font-size: .875rem; }
 .github-sync .backup-note { margin: 4px 0 0; overflow-wrap: anywhere; }
 .github-sync-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .github-sync-remember { display: flex; align-items: center; gap: 6px; font-size: .875rem; }
 .field .summary-transfer-text { height: auto; min-height: 126px; resize: vertical; }
-#share-summary-status { flex-basis: 100%; margin: 0; }
 .entry { display: grid; grid-template-columns: 37px minmax(0,1fr) auto 16px; width: 100%; align-items: center; gap: 10px; min-height: 57px; padding: 8px 2px; border: 0; border-top: 1px solid #eaf2f3; background: transparent; text-align: left; }
 .entry:hover { background: #f4fafb; }
 .entry.sample { opacity: 1; }
@@ -367,7 +378,7 @@ dialog::backdrop { background: #102f3b70; }
 }
 
 </style>
-  <meta name="ledger-version" content="9ff68adebf34ada8">
+  <meta name="ledger-version" content="0b59d059c44d2ce3">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
@@ -501,19 +512,33 @@ dialog::backdrop { background: #102f3b70; }
       </header>
       <div class="page-content">
         <div class="summary combined-summary" aria-label="两人当月收支合计" aria-live="polite">
+          <article class="metric balance">
+            <div class="metric-top"><span>两人本月结余</span><span class="metric-icon"><svg aria-hidden="true"><use href="#wallet"/></svg></span></div>
+            <strong id="combined-balance">—</strong>
+            <small>总收入 − 总支出</small>
+          </article>
           <article class="metric">
             <div class="metric-top"><span>两人总收入</span><span class="metric-icon income"><svg aria-hidden="true"><use href="#down"/></svg></span></div>
             <strong id="combined-income">—</strong>
+            <small id="combined-income-change"></small>
           </article>
           <article class="metric">
             <div class="metric-top"><span>两人总支出</span><span class="metric-icon expense"><svg aria-hidden="true"><use href="#up"/></svg></span></div>
             <strong id="combined-expense">—</strong>
+            <small id="combined-expense-change"></small>
           </article>
         </div>
         <p id="combined-status" class="backup-note" role="status"></p>
-        <div class="share-summary-action">
-          <button id="share-month-summary" type="button" class="secondary"><svg aria-hidden="true"><use href="#up"/></svg>分享个人汇总</button>
-        </div>
+        <section class="panel combined-trend" aria-labelledby="combined-trend-title">
+          <div class="panel-heading">
+            <div><h2 id="combined-trend-title">近六个月收支</h2><p>截至所选月份</p></div>
+            <div id="combined-trend-key" class="combined-trend-key" aria-hidden="true" hidden>
+              <span class="combined-income">收入</span><span class="combined-expense">支出</span>
+            </div>
+          </div>
+          <p id="combined-trend-empty" class="backup-note">收到对方的月度汇总后，这里会显示收支对比。</p>
+          <ul id="combined-trend-list" class="combined-trend-list" hidden></ul>
+        </section>
       </div>
     </main>
     <p id="notice" class="notice" role="status"></p>
@@ -567,18 +592,6 @@ dialog::backdrop { background: #102f3b70; }
         <p id="github-sync-error" class="form-error" role="status"></p>
         <button id="disconnect-github-sync" type="button" class="danger" hidden>断开连接</button>
         <button id="connect-github-sync" type="submit" class="primary">连接并同步</button>
-      </footer>
-    </form>
-  </dialog>
-  <dialog id="share-summary-dialog" class="record-editor" aria-labelledby="share-summary-title">
-    <form>
-      <header class="dialog-header"><h2 id="share-summary-title">分享个人汇总</h2><button id="close-share-summary" type="button" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
-      <div class="record-editor-body">
-        <label class="field">汇总文本<textarea id="share-summary-text" class="summary-transfer-text" rows="4" readonly></textarea></label>
-      </div>
-      <footer class="dialog-footer">
-        <p id="share-summary-status" class="asset-form-hint" role="status" hidden></p>
-        <button id="copy-month-summary" type="button" class="primary">复制汇总</button>
       </footer>
     </form>
   </dialog>
@@ -932,19 +945,84 @@ function writePartnerMonth(period, summary) {
   localStorage.setItem(partnerTotalsKey, JSON.stringify(totals));
 }
 
-function renderCombined(income, expense) {
-  let partner;
+function renderCombined() {
+  let imported = {};
   let message = githubPartnerTotals === null
     ? "可导入对方发来的月度收支汇总。"
     : "对方尚未同步该月的收支汇总。";
   try {
-    partner = githubPartnerTotals?.[month] ?? readPartnerTotals()[month];
+    imported = readPartnerTotals() ?? {};
   } catch {
     message = "无法读取对方的收支汇总。";
   }
-  $("combined-income").textContent = partner ? money(income + partner.income) : "—";
-  $("combined-expense").textContent = partner ? money(expense + partner.expense) : "—";
-  $("combined-status").textContent = partner ? "" : message;
+
+  const history = new Map();
+  for (let period = month; history.size < 6; period = shiftedMonth(period, -1)) {
+    const partner = githubPartnerTotals?.[period] ?? imported[period];
+    history.set(period, partner ? { income: partner.income, expense: partner.expense } : null);
+    if (period === "0001-01") break;
+  }
+  for (const entry of records ?? []) {
+    const totals = history.get(entry.date.slice(0, 7));
+    if (totals) totals[entry.type] += entry.amount;
+  }
+
+  const current = history.get(month);
+  const previous = month === "0001-01" ? null : history.get(shiftedMonth(month, -1));
+  $("combined-balance").textContent = current ? money(current.income - current.expense) : "—";
+  for (const type of ["income", "expense"]) {
+    $("combined-" + type).textContent = current ? money(current[type]) : "—";
+    const change = current && previous ? current[type] - previous[type] : null;
+    $("combined-" + type + "-change").textContent = change === null ? ""
+      : change === 0 ? "较上月持平" : "较上月 " + (change > 0 ? "+" : "") + money(change);
+  }
+  $("combined-status").textContent = current ? "" : message;
+  renderCombinedTrend(Array.from(history).filter(([, totals]) => totals).reverse());
+}
+
+function renderCombinedTrend(rows) {
+  const list = $("combined-trend-list");
+  list.replaceChildren();
+  list.hidden = !rows.length;
+  $("combined-trend-key").hidden = !rows.length;
+  $("combined-trend-empty").hidden = Boolean(rows.length);
+  const amounts = rows.flatMap(([, totals]) => [totals.income, totals.expense]);
+  const min = Math.min(0, ...amounts);
+  const max = Math.max(0, ...amounts);
+  const range = Math.max(1, max - min);
+  list.style.setProperty("--zero-position", ((0 - min) / range) * 100 + "%");
+  for (const [period, totals] of rows) {
+    const row = document.createElement("li");
+    row.className = "combined-trend-row";
+    const label = document.createElement("span");
+    label.className = "combined-trend-month";
+    label.textContent = monthLabel(period);
+    const values = document.createElement("div");
+    values.className = "combined-trend-values";
+    for (const [type, name] of [["income", "收入"], ["expense", "支出"]]) {
+      const amount = totals[type];
+      const value = document.createElement("div");
+      value.className = "combined-trend-value combined-" + type;
+      const track = document.createElement("span");
+      track.className = "combined-trend-track";
+      track.setAttribute("aria-hidden", "true");
+      const fill = document.createElement("span");
+      fill.className = "combined-trend-fill";
+      fill.style.setProperty("--bar-start", ((Math.min(0, amount) - min) / range) * 100 + "%");
+      fill.style.setProperty("--bar-size", (Math.abs(amount) / range) * 100 + "%");
+      track.append(fill);
+      const formatted = document.createElement("span");
+      formatted.className = "combined-trend-amount";
+      const accessibleLabel = document.createElement("span");
+      accessibleLabel.className = "sr-only";
+      accessibleLabel.textContent = name + " ";
+      formatted.append(accessibleLabel, money(amount));
+      value.append(track, formatted);
+      values.append(value);
+    }
+    row.append(label, values);
+    list.append(row);
+  }
 }
 
 function monthlyBudget(month, budgets) {
@@ -999,9 +1077,7 @@ function render() {
   const expenses = entries.filter((entry) => entry.type === "expense");
   const income = sumAmounts(incomes);
   const expense = sumAmounts(expenses);
-  if (!$("combined").hidden) {
-    renderCombined(records === null ? 0 : income, records === null ? 0 : expense);
-  }
+  if (!$("combined").hidden) renderCombined();
   const label = monthLabel(month);
   monthInputs.forEach((input) => { input.value = month; });
   monthLabels.forEach((element) => { element.textContent = label; });
@@ -1224,42 +1300,10 @@ $("budget-form").addEventListener("submit", (event) => {
   announce(amount === null ? "已取消支出额度" : "已保存支出额度");
 });
 
-const shareSummaryDialog = $("share-summary-dialog");
-const shareSummaryText = $("share-summary-text");
 const importSummaryDialog = $("import-summary-dialog");
 const importSummaryText = $("import-summary-text");
 const importSummaryError = $("import-summary-error");
 
-$("share-month-summary").addEventListener("click", () => {
-  const entries = records === null ? [] : monthRecords();
-  const income = sumAmounts(entries.filter((entry) => entry.type === "income"));
-  const expense = sumAmounts(entries.filter((entry) => entry.type === "expense"));
-  if (![income, expense].every(validPartnerAmount)) {
-    announce("本月金额超出可分享范围。");
-    return;
-  }
-  shareSummaryText.value = [
-    "日日记账月度汇总",
-    "月份：" + month,
-    "收入：" + (income / 100).toFixed(2),
-    "支出：" + (expense / 100).toFixed(2),
-  ].join("\n");
-  $("share-summary-status").hidden = true;
-  shareSummaryDialog.showModal();
-});
-$("close-share-summary").addEventListener("click", () => shareSummaryDialog.close());
-$("copy-month-summary").addEventListener("click", async () => {
-  const status = $("share-summary-status");
-  try {
-    await navigator.clipboard.writeText(shareSummaryText.value);
-    status.textContent = "已复制汇总，可粘贴发给对方。";
-  } catch {
-    shareSummaryText.focus();
-    shareSummaryText.select();
-    status.textContent = "请手动复制选中的汇总。";
-  }
-  status.hidden = false;
-});
 
 function parseSharedSummary(text) {
   const match = /^日日记账月度汇总\s+月份[：:]\s*(\d{4}-(?:0[1-9]|1[0-2]))\s+收入[：:]\s*(-?\d+\.\d{2})\s+支出[：:]\s*(-?\d+\.\d{2})$/.exec(text.trim());
@@ -1280,7 +1324,7 @@ $("import-summary-form").addEventListener("submit", (event) => {
   importSummaryError.textContent = "";
   const summary = parseSharedSummary(importSummaryText.value);
   if (!summary) {
-    importSummaryError.textContent = "请粘贴对方从「分享个人汇总」复制的完整文本。";
+    importSummaryError.textContent = "请粘贴完整的日日记账月度汇总文本。";
     importSummaryText.focus();
     return;
   }
