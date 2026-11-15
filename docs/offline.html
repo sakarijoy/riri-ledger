@@ -145,15 +145,20 @@ h2 { font-size: 17px; letter-spacing: -.02em; }
 .asset-cards, #asset-fields { display: grid; gap: 10px; }
 .asset-cards:empty { display: none; }
 .asset-card { min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: white; }
-.asset-card summary {
+.asset-card > summary {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto) 9px;
   align-items: center; gap: 10px; padding: 12px; border-radius: 11px; background: #eaf5f6;
-  list-style: none; cursor: pointer; overflow-wrap: anywhere;
+  overflow-wrap: anywhere;
 }
-.asset-card summary::-webkit-details-marker { display: none; }
-.asset-card summary::after { content: ""; width: 7px; height: 7px; border: solid #46757e; border-width: 0 2px 2px 0; transform: rotate(45deg); }
-.asset-card[open] summary { border-radius: 11px 11px 0 0; }
-.asset-card[open] summary::after { transform: rotate(225deg); }
+:is(.asset-card, .asset-group) > summary { list-style: none; cursor: pointer; }
+:is(.asset-card, .asset-group) > summary::-webkit-details-marker { display: none; }
+:is(.asset-card, .asset-group) > summary::after {
+  content: ""; width: 7px; height: 7px; border: solid currentColor;
+  border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.asset-card > summary::after { color: #46757e; }
+.asset-card[open] > summary { border-radius: 11px 11px 0 0; }
+:is(.asset-card, .asset-group)[open] > summary::after { transform: rotate(225deg); }
 .asset-period, .asset-month-metric { display: grid; gap: 2px; }
 .asset-month-metric { text-align: right; font-variant-numeric: tabular-nums; }
 .asset-period time, .asset-month-delta { color: var(--muted); font-size: .75rem; }
@@ -172,11 +177,16 @@ h2 { font-size: 17px; letter-spacing: -.02em; }
   gap: 4px 8px; padding: 8px 10px; border-radius: 8px 8px 0 0;
   background: var(--group-wash); color: var(--group-ink); font-size: .875rem; overflow-wrap: anywhere;
 }
-.asset-group-heading h3 { margin: 0; font-size: inherit; }
+.asset-group-title { margin: 0; font-size: inherit; font-weight: 700; white-space: nowrap; }
 .asset-group-heading strong, .asset-account-row dd { font-variant-numeric: tabular-nums; }
-.asset-card-body .asset-group-heading { padding: 8px 12px; border-bottom: 1px solid var(--group-line); }
-.asset-card-body .asset-group-heading h3 { display: flex; align-items: center; gap: 8px; }
-.asset-card-body .asset-group-heading h3::before {
+.asset-group > summary {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr) 9px;
+  align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border-radius: 8px;
+}
+.asset-group[open] > summary { border-radius: 8px 8px 0 0; border-bottom: 1px solid var(--group-line); }
+.asset-group > summary strong { text-align: right; }
+.asset-group > summary .asset-group-title { display: flex; align-items: center; gap: 8px; }
+.asset-group > summary .asset-group-title::before {
   content: ""; flex: 0 0 6px; height: 6px; border-radius: 50%; background: currentColor;
 }
 .asset-card-body dl { margin: 0; padding: 0 12px; font-size: .875rem; }
@@ -1430,13 +1440,14 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
       .filter(([, members]) => members.length);
   }
 
-  function assetGroup(type, headingTag) {
-    const section = document.createElement("section");
+  function assetGroup(type, collapsible = false) {
+    const section = document.createElement(collapsible ? "details" : "section");
     section.className = "asset-group";
     section.dataset.assetType = type;
-    const header = document.createElement("header");
+    const header = document.createElement(collapsible ? "summary" : "header");
     header.className = "asset-group-heading";
-    const title = document.createElement(headingTag);
+    const title = document.createElement(collapsible ? "span" : "h3");
+    title.className = "asset-group-title";
     title.textContent = assetTypes[type];
     header.append(title);
     section.append(header);
@@ -1500,11 +1511,11 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
     return button;
   }
 
-  function monthCard(month, recordedOn, groups, snapshot, change, open) {
+  function monthCard(month, recordedOn, groups, snapshot, change, state) {
     const card = document.createElement("details");
     card.className = "asset-card";
     card.dataset.month = month;
-    card.open = open;
+    card.open = state.open;
     const heading = document.createElement("summary");
     const period = document.createElement("span");
     period.className = "asset-period";
@@ -1530,7 +1541,8 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
     const body = document.createElement("div");
     body.className = "asset-card-body";
     for (const [type, columns] of groups) {
-      const { section, header } = assetGroup(type, "h3");
+      const { section, header } = assetGroup(type, true);
+      section.open = !state.collapsedTypes?.has(type);
       const subtotal = document.createElement("strong");
       const balances = columns.map(({ id }) => snapshot[id]).filter((balance) => balance != null);
       subtotal.textContent = balances.length ? money(balances.reduce((sum, balance) => sum + balance, 0)) : "—";
@@ -1579,13 +1591,17 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
       ? "还没有资产记录"
       : "先在「管理列目」中添加要统计的资产";
     const cards = $("asset-cards");
-    const expanded = new Map(Array.from(cards.children, (card) => [card.dataset.month, card.open]));
+    const previousStates = new Map(Array.from(cards.children, (card) => [card.dataset.month, {
+      open: card.open,
+      collapsedTypes: new Set(Array.from(card.querySelectorAll(".asset-group:not([open])"),
+        (group) => group.dataset.assetType)),
+    }]));
     const groups = groupColumns(columns);
     cards.replaceChildren();
     for (const month of months) {
       const recordedOn = dates[month] ?? monthEnd(month);
       cards.append(monthCard(month, recordedOn, groups, snapshots[month],
-        monthChange(snapshots, month), expanded.get(month) ?? month === latest));
+        monthChange(snapshots, month), previousStates.get(month) ?? { open: month === latest }));
     }
   }
 
@@ -1604,7 +1620,7 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
         : "填写这一天各账户的余额。每月保留一条记录。";
       editorColumns = columns;
       for (const [type, members] of groupColumns(editorColumns)) {
-        const { section } = assetGroup(type, "h3");
+        const { section } = assetGroup(type);
         const inputs = document.createElement("div");
         inputs.className = "asset-group-inputs field-grid";
         for (const { id, name } of members) {

@@ -75,13 +75,14 @@
       .filter(([, members]) => members.length);
   }
 
-  function assetGroup(type, headingTag) {
-    const section = document.createElement("section");
+  function assetGroup(type, collapsible = false) {
+    const section = document.createElement(collapsible ? "details" : "section");
     section.className = "asset-group";
     section.dataset.assetType = type;
-    const header = document.createElement("header");
+    const header = document.createElement(collapsible ? "summary" : "header");
     header.className = "asset-group-heading";
-    const title = document.createElement(headingTag);
+    const title = document.createElement(collapsible ? "span" : "h3");
+    title.className = "asset-group-title";
     title.textContent = assetTypes[type];
     header.append(title);
     section.append(header);
@@ -145,11 +146,11 @@
     return button;
   }
 
-  function monthCard(month, recordedOn, groups, snapshot, change, open) {
+  function monthCard(month, recordedOn, groups, snapshot, change, state) {
     const card = document.createElement("details");
     card.className = "asset-card";
     card.dataset.month = month;
-    card.open = open;
+    card.open = state.open;
     const heading = document.createElement("summary");
     const period = document.createElement("span");
     period.className = "asset-period";
@@ -175,7 +176,8 @@
     const body = document.createElement("div");
     body.className = "asset-card-body";
     for (const [type, columns] of groups) {
-      const { section, header } = assetGroup(type, "h3");
+      const { section, header } = assetGroup(type, true);
+      section.open = !state.collapsedTypes?.has(type);
       const subtotal = document.createElement("strong");
       const balances = columns.map(({ id }) => snapshot[id]).filter((balance) => balance != null);
       subtotal.textContent = balances.length ? money(balances.reduce((sum, balance) => sum + balance, 0)) : "—";
@@ -224,13 +226,17 @@
       ? "还没有资产记录"
       : "先在「管理列目」中添加要统计的资产";
     const cards = $("asset-cards");
-    const expanded = new Map(Array.from(cards.children, (card) => [card.dataset.month, card.open]));
+    const previousStates = new Map(Array.from(cards.children, (card) => [card.dataset.month, {
+      open: card.open,
+      collapsedTypes: new Set(Array.from(card.querySelectorAll(".asset-group:not([open])"),
+        (group) => group.dataset.assetType)),
+    }]));
     const groups = groupColumns(columns);
     cards.replaceChildren();
     for (const month of months) {
       const recordedOn = dates[month] ?? monthEnd(month);
       cards.append(monthCard(month, recordedOn, groups, snapshots[month],
-        monthChange(snapshots, month), expanded.get(month) ?? month === latest));
+        monthChange(snapshots, month), previousStates.get(month) ?? { open: month === latest }));
     }
   }
 
@@ -249,7 +255,7 @@
         : "填写这一天各账户的余额。每月保留一条记录。";
       editorColumns = columns;
       for (const [type, members] of groupColumns(editorColumns)) {
-        const { section } = assetGroup(type, "h3");
+        const { section } = assetGroup(type);
         const inputs = document.createElement("div");
         inputs.className = "asset-group-inputs field-grid";
         for (const { id, name } of members) {
