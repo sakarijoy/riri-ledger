@@ -228,17 +228,10 @@ function validPartnerAmount(amount) {
   return Number.isSafeInteger(amount) && Math.abs(amount) < 100000000000000;
 }
 
-function writePartnerMonth(period, summary) {
-  const totals = readPartnerTotals();
-  if (summary === null) delete totals[period];
-  else totals[period] = summary;
-  localStorage.setItem(partnerTotalsKey, JSON.stringify(totals));
-}
-
 function renderCombined() {
   let imported = {};
   let message = githubPartnerTotals === null
-    ? "可导入对方发来的月度收支汇总。"
+    ? "等待对方的月度收支汇总。"
     : "对方尚未同步该月的收支汇总。";
   try {
     imported = readPartnerTotals() ?? {};
@@ -588,94 +581,6 @@ $("budget-form").addEventListener("submit", (event) => {
   budgetEditor.close();
   render();
   announce(amount === null ? "已取消支出额度" : "已保存支出额度");
-});
-
-const importSummaryDialog = $("import-summary-dialog");
-const importSummaryText = $("import-summary-text");
-const importSummaryError = $("import-summary-error");
-
-
-function parseSharedSummary(text) {
-  const match = /^日日记账月度汇总\s+月份[：:]\s*(\d{4}-(?:0[1-9]|1[0-2]))\s+收入[：:]\s*(-?\d+\.\d{2})\s+支出[：:]\s*(-?\d+\.\d{2})$/.exec(text.trim());
-  if (!match || match[1].startsWith("0000")) return null;
-  const [, period, incomeText, expenseText] = match;
-  const [income, expense] = [incomeText, expenseText].map((value) => Number(value.replace(".", "")));
-  return [income, expense].every(validPartnerAmount) ? { period, income, expense } : null;
-}
-
-$("import-partner-totals").addEventListener("click", () => {
-  importSummaryText.value = "";
-  importSummaryError.textContent = "";
-  importSummaryDialog.showModal();
-});
-$("close-import-summary").addEventListener("click", () => importSummaryDialog.close());
-$("import-summary-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  importSummaryError.textContent = "";
-  const summary = parseSharedSummary(importSummaryText.value);
-  if (!summary) {
-    importSummaryError.textContent = "请粘贴完整的日日记账月度汇总文本。";
-    importSummaryText.focus();
-    return;
-  }
-  const { period, income, expense } = summary;
-  try {
-    const previous = readPartnerTotals()[period];
-    if (previous && (previous.income !== income || previous.expense !== expense) &&
-      !window.confirm("用这份汇总更新 " + monthLabel(period) + " 的对方收支？")) return;
-    writePartnerMonth(period, { income, expense });
-  } catch {
-    importSummaryError.textContent = "导入失败，请检查浏览器存储。";
-    return;
-  }
-  month = period;
-  importSummaryDialog.close();
-  render();
-  announce("已导入 " + monthLabel(period) + " 的对方汇总");
-});
-
-const partnerEditor = $("partner-editor");
-const partnerIncome = createAmountField($("partner-income-field"), "对方收入（元）", 12, "填写金额");
-const partnerExpense = createAmountField($("partner-expense-field"), "对方支出（元）", 12, "填写金额");
-let editingPartnerMonth;
-
-$("edit-partner-totals").addEventListener("click", () => {
-  let previous;
-  try {
-    previous = readPartnerTotals()[month];
-  } catch {
-    announce("无法读取对方的收支汇总。");
-    return;
-  }
-  editingPartnerMonth = month;
-  partnerIncome.reset(previous?.income);
-  partnerExpense.reset(previous?.expense);
-  $("partner-month").textContent = monthLabel(month);
-  $("partner-error").textContent = "";
-  importSummaryDialog.close();
-  partnerEditor.showModal();
-  partnerEditor.querySelector(".record-editor-body").scrollTop = 0;
-});
-$("close-partner-editor").addEventListener("click", () => partnerEditor.close());
-$("partner-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const income = partnerIncome.cents;
-  const expense = partnerExpense.cents;
-  const clearing = income === null && expense === null;
-  if (!clearing && (income === null || expense === null)) {
-    $("partner-error").textContent = "请同时填写收入和支出，其中一项没有金额时填 0。";
-    (income === null ? partnerIncome : partnerExpense).button.focus();
-    return;
-  }
-  try {
-    writePartnerMonth(editingPartnerMonth, clearing ? null : { income, expense });
-  } catch {
-    $("partner-error").textContent = "保存失败，请检查浏览器存储。";
-    return;
-  }
-  partnerEditor.close();
-  render();
-  announce(clearing ? "已移除当月汇总" : "已保存对方收支汇总");
 });
 
 function syncDateDisplay(input) {

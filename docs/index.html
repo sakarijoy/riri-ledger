@@ -90,6 +90,8 @@ h1, h2, p { margin: 0; }
 .metric strong { display: block; margin: 7px 0 8px; font-size: clamp(23px,3vw,35px); line-height: 1.18; letter-spacing: -.05em; overflow-wrap: anywhere; }
 .metric small { font-size: 11px; color: var(--muted); }
 .metric.balance small { color: #e7f5f7; }
+:is(#overview, #combined) .metric.balance { align-self: start; }
+:is(#overview, #combined) .metric.balance strong { white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 .breakdown { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 22px; align-items: center; }
 .breakdown .panel-heading { grid-column: 1 / -1; }
@@ -122,7 +124,6 @@ h2 { font-size: 17px; letter-spacing: -.02em; }
 .github-sync .backup-note { margin: 4px 0 0; overflow-wrap: anywhere; }
 .github-sync-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .github-sync-remember { display: flex; align-items: center; gap: 6px; font-size: .875rem; }
-.field .summary-transfer-text { height: auto; min-height: 126px; resize: vertical; }
 .entry { display: grid; grid-template-columns: 37px minmax(0,1fr) auto 16px; width: 100%; align-items: center; gap: 10px; min-height: 57px; padding: 8px 2px; border: 0; border-top: 1px solid #eaf2f3; background: transparent; text-align: left; }
 .entry:hover { background: #f4fafb; }
 .entry.sample { opacity: 1; }
@@ -345,7 +346,7 @@ dialog::backdrop { background: #102f3b70; }
   .asset-summary .balance { grid-column: auto; }
   .metric { padding: 11px 12px 13px; }
   .metric strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; letter-spacing: -.025em; }
-  #overview .metric.balance strong { font-size: 1.75rem; }
+  :is(#overview, #combined) .metric.balance strong { font-size: 1.75rem; }
   .metric-icon { width: 29px; height: 29px; }
   .metric-icon svg { width: 16px; height: 16px; }
   .detail-grid { grid-template-columns: 1fr; gap: 13px; }
@@ -378,7 +379,7 @@ dialog::backdrop { background: #102f3b70; }
 }
 
 </style>
-  <meta name="ledger-version" content="0b59d059c44d2ce3">
+  <meta name="ledger-version" content="8cc373a6cba795a3">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
@@ -507,7 +508,6 @@ dialog::backdrop { background: #102f3b70; }
             <label class="month-picker"><svg aria-hidden="true"><use href="#calendar"/></svg><span id="combined-month-label" data-month-label></span><input id="combined-month" data-month-input type="month" min="0001-01" max="9999-12" aria-label="选择月份"></label>
             <button type="button" id="combined-next" data-month-step="1" aria-label="下一个月"><svg aria-hidden="true"><use href="#right"/></svg></button>
           </div>
-          <button class="primary" id="import-partner-totals" type="button">导入汇总</button>
         </div>
       </header>
       <div class="page-content">
@@ -592,34 +592,6 @@ dialog::backdrop { background: #102f3b70; }
         <p id="github-sync-error" class="form-error" role="status"></p>
         <button id="disconnect-github-sync" type="button" class="danger" hidden>断开连接</button>
         <button id="connect-github-sync" type="submit" class="primary">连接并同步</button>
-      </footer>
-    </form>
-  </dialog>
-  <dialog id="import-summary-dialog" class="record-editor" aria-labelledby="import-summary-title">
-    <form id="import-summary-form" autocomplete="off">
-      <header class="dialog-header"><h2 id="import-summary-title">导入对方汇总</h2><button id="close-import-summary" type="button" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
-      <div class="record-editor-body">
-        <label class="field">粘贴对方发来的汇总<textarea id="import-summary-text" class="summary-transfer-text" rows="4" maxlength="300" autocomplete="off" spellcheck="false"></textarea></label>
-      </div>
-      <footer class="dialog-footer">
-        <p id="import-summary-error" class="form-error" role="status"></p>
-        <button id="edit-partner-totals" type="button" class="secondary">手动填写</button>
-        <button type="submit" class="primary">导入汇总</button>
-      </footer>
-    </form>
-  </dialog>
-  <dialog id="partner-editor" class="record-editor" aria-labelledby="partner-editor-title">
-    <form id="partner-form">
-      <header class="dialog-header"><h2 id="partner-editor-title">对方当月收支</h2><button type="button" id="close-partner-editor" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
-      <div class="record-editor-body">
-        <p id="partner-month" class="asset-form-hint"></p>
-        <p class="asset-form-hint">没有收入或支出时填 0。清空两项后保存可移除当月汇总。</p>
-        <div id="partner-income-field"></div>
-        <div id="partner-expense-field"></div>
-      </div>
-      <footer class="dialog-footer">
-        <p id="partner-error" class="form-error" role="status"></p>
-        <button class="primary" type="submit">保存汇总</button>
       </footer>
     </form>
   </dialog>
@@ -938,17 +910,10 @@ function validPartnerAmount(amount) {
   return Number.isSafeInteger(amount) && Math.abs(amount) < 100000000000000;
 }
 
-function writePartnerMonth(period, summary) {
-  const totals = readPartnerTotals();
-  if (summary === null) delete totals[period];
-  else totals[period] = summary;
-  localStorage.setItem(partnerTotalsKey, JSON.stringify(totals));
-}
-
 function renderCombined() {
   let imported = {};
   let message = githubPartnerTotals === null
-    ? "可导入对方发来的月度收支汇总。"
+    ? "等待对方的月度收支汇总。"
     : "对方尚未同步该月的收支汇总。";
   try {
     imported = readPartnerTotals() ?? {};
@@ -1298,94 +1263,6 @@ $("budget-form").addEventListener("submit", (event) => {
   budgetEditor.close();
   render();
   announce(amount === null ? "已取消支出额度" : "已保存支出额度");
-});
-
-const importSummaryDialog = $("import-summary-dialog");
-const importSummaryText = $("import-summary-text");
-const importSummaryError = $("import-summary-error");
-
-
-function parseSharedSummary(text) {
-  const match = /^日日记账月度汇总\s+月份[：:]\s*(\d{4}-(?:0[1-9]|1[0-2]))\s+收入[：:]\s*(-?\d+\.\d{2})\s+支出[：:]\s*(-?\d+\.\d{2})$/.exec(text.trim());
-  if (!match || match[1].startsWith("0000")) return null;
-  const [, period, incomeText, expenseText] = match;
-  const [income, expense] = [incomeText, expenseText].map((value) => Number(value.replace(".", "")));
-  return [income, expense].every(validPartnerAmount) ? { period, income, expense } : null;
-}
-
-$("import-partner-totals").addEventListener("click", () => {
-  importSummaryText.value = "";
-  importSummaryError.textContent = "";
-  importSummaryDialog.showModal();
-});
-$("close-import-summary").addEventListener("click", () => importSummaryDialog.close());
-$("import-summary-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  importSummaryError.textContent = "";
-  const summary = parseSharedSummary(importSummaryText.value);
-  if (!summary) {
-    importSummaryError.textContent = "请粘贴完整的日日记账月度汇总文本。";
-    importSummaryText.focus();
-    return;
-  }
-  const { period, income, expense } = summary;
-  try {
-    const previous = readPartnerTotals()[period];
-    if (previous && (previous.income !== income || previous.expense !== expense) &&
-      !window.confirm("用这份汇总更新 " + monthLabel(period) + " 的对方收支？")) return;
-    writePartnerMonth(period, { income, expense });
-  } catch {
-    importSummaryError.textContent = "导入失败，请检查浏览器存储。";
-    return;
-  }
-  month = period;
-  importSummaryDialog.close();
-  render();
-  announce("已导入 " + monthLabel(period) + " 的对方汇总");
-});
-
-const partnerEditor = $("partner-editor");
-const partnerIncome = createAmountField($("partner-income-field"), "对方收入（元）", 12, "填写金额");
-const partnerExpense = createAmountField($("partner-expense-field"), "对方支出（元）", 12, "填写金额");
-let editingPartnerMonth;
-
-$("edit-partner-totals").addEventListener("click", () => {
-  let previous;
-  try {
-    previous = readPartnerTotals()[month];
-  } catch {
-    announce("无法读取对方的收支汇总。");
-    return;
-  }
-  editingPartnerMonth = month;
-  partnerIncome.reset(previous?.income);
-  partnerExpense.reset(previous?.expense);
-  $("partner-month").textContent = monthLabel(month);
-  $("partner-error").textContent = "";
-  importSummaryDialog.close();
-  partnerEditor.showModal();
-  partnerEditor.querySelector(".record-editor-body").scrollTop = 0;
-});
-$("close-partner-editor").addEventListener("click", () => partnerEditor.close());
-$("partner-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const income = partnerIncome.cents;
-  const expense = partnerExpense.cents;
-  const clearing = income === null && expense === null;
-  if (!clearing && (income === null || expense === null)) {
-    $("partner-error").textContent = "请同时填写收入和支出，其中一项没有金额时填 0。";
-    (income === null ? partnerIncome : partnerExpense).button.focus();
-    return;
-  }
-  try {
-    writePartnerMonth(editingPartnerMonth, clearing ? null : { income, expense });
-  } catch {
-    $("partner-error").textContent = "保存失败，请检查浏览器存储。";
-    return;
-  }
-  partnerEditor.close();
-  render();
-  announce(clearing ? "已移除当月汇总" : "已保存对方收支汇总");
 });
 
 function syncDateDisplay(input) {

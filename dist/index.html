@@ -135,7 +135,6 @@
             <label class="month-picker"><svg aria-hidden="true"><use href="#calendar"/></svg><span id="combined-month-label" data-month-label></span><input id="combined-month" data-month-input type="month" min="0001-01" max="9999-12" aria-label="选择月份"></label>
             <button type="button" id="combined-next" data-month-step="1" aria-label="下一个月"><svg aria-hidden="true"><use href="#right"/></svg></button>
           </div>
-          <button class="primary" id="import-partner-totals" type="button">导入汇总</button>
         </div>
       </header>
       <div class="page-content">
@@ -220,34 +219,6 @@
         <p id="github-sync-error" class="form-error" role="status"></p>
         <button id="disconnect-github-sync" type="button" class="danger" hidden>断开连接</button>
         <button id="connect-github-sync" type="submit" class="primary">连接并同步</button>
-      </footer>
-    </form>
-  </dialog>
-  <dialog id="import-summary-dialog" class="record-editor" aria-labelledby="import-summary-title">
-    <form id="import-summary-form" autocomplete="off">
-      <header class="dialog-header"><h2 id="import-summary-title">导入对方汇总</h2><button id="close-import-summary" type="button" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
-      <div class="record-editor-body">
-        <label class="field">粘贴对方发来的汇总<textarea id="import-summary-text" class="summary-transfer-text" rows="4" maxlength="300" autocomplete="off" spellcheck="false"></textarea></label>
-      </div>
-      <footer class="dialog-footer">
-        <p id="import-summary-error" class="form-error" role="status"></p>
-        <button id="edit-partner-totals" type="button" class="secondary">手动填写</button>
-        <button type="submit" class="primary">导入汇总</button>
-      </footer>
-    </form>
-  </dialog>
-  <dialog id="partner-editor" class="record-editor" aria-labelledby="partner-editor-title">
-    <form id="partner-form">
-      <header class="dialog-header"><h2 id="partner-editor-title">对方当月收支</h2><button type="button" id="close-partner-editor" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
-      <div class="record-editor-body">
-        <p id="partner-month" class="asset-form-hint"></p>
-        <p class="asset-form-hint">没有收入或支出时填 0。清空两项后保存可移除当月汇总。</p>
-        <div id="partner-income-field"></div>
-        <div id="partner-expense-field"></div>
-      </div>
-      <footer class="dialog-footer">
-        <p id="partner-error" class="form-error" role="status"></p>
-        <button class="primary" type="submit">保存汇总</button>
       </footer>
     </form>
   </dialog>
