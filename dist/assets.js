@@ -4,7 +4,6 @@
   const key = "riri-monthly-asset-state-v1";
   const legacySnapshotsKey = "riri-monthly-assets-v1";
   const legacyColumnsKey = "riri-monthly-asset-columns-v1";
-  const hiddenPresetsKey = "riri-hidden-asset-presets-v1";
   const legacyAccounts = [
     ["icbc", "工商银行"],
     ["ccb", "建设银行"],
@@ -17,7 +16,6 @@
     ["alipayInvestment", "支付宝理财"],
     ["citic", "中信证券"],
   ];
-  const presets = ["银行卡", "支付宝", "微信", "信用卡"];
   const assetTypes = {
     bank: "银行账户",
     wallet: "电子钱包",
@@ -136,14 +134,41 @@
     element.classList.toggle("asset-negative", amount < 0);
   }
 
-  function editMonthButton(month, label) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "asset-date";
-    button.textContent = label;
-    button.setAttribute("aria-label", "编辑 " + month + " 资产记录");
-    button.addEventListener("click", () => openAssetEditor(month));
-    return button;
+  function deleteMonth(month, recordedOn) {
+    if (!window.confirm("删除 " + recordedOn + " 的资产记录？该月的账户余额将一并移除。")) return;
+    try {
+      const { snapshots, columns, dates = {} } = readAssets();
+      if (Object.hasOwn(snapshots, month)) {
+        delete snapshots[month];
+        delete dates[month];
+        saveAssets(snapshots, columns, dates);
+      }
+    } catch {
+      announce("删除失败，请检查浏览器存储。");
+      return;
+    }
+    renderAssets();
+    $("add-asset-month").focus();
+    announce("已删除 " + month + " 的资产记录");
+  }
+
+  function monthActions(month, recordedOn) {
+    const actions = document.createElement("footer");
+    actions.className = "asset-card-actions";
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "asset-date";
+    edit.textContent = "编辑余额";
+    edit.setAttribute("aria-label", "编辑余额，" + recordedOn + " 的资产记录");
+    edit.addEventListener("click", () => openAssetEditor(month));
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "asset-delete";
+    remove.textContent = "删除记录";
+    remove.setAttribute("aria-label", "删除记录，" + recordedOn + " 的资产记录");
+    remove.addEventListener("click", () => deleteMonth(month, recordedOn));
+    actions.append(edit, remove);
+    return actions;
   }
 
   function monthCard(month, recordedOn, groups, snapshot, change, state) {
@@ -196,7 +221,7 @@
       section.append(list);
       body.append(section);
     }
-    card.append(heading, body, editMonthButton(month, "编辑余额"));
+    card.append(heading, body, monthActions(month, recordedOn));
     return card;
   }
 
@@ -303,10 +328,6 @@
     newColumnForm.elements.columnType.focus();
   }
 
-  function focusFirstPreset() {
-    ($("asset-presets-list").querySelector("button") ?? newColumnForm.elements.columnType).focus();
-  }
-
   function assetTypeField(selectedType = "") {
     const label = document.createElement("label");
     label.className = "field";
@@ -327,71 +348,19 @@
     return label;
   }
 
-  function readHiddenPresets() {
-    return JSON.parse(localStorage.getItem(hiddenPresetsKey) ?? "[]").filter((name) => presets.includes(name));
-  }
-
-  function setPresetVisibility(name) {
-    try {
-      const hidden = name ? [...new Set([...readHiddenPresets(), name])] : [];
-      localStorage.setItem(hiddenPresetsKey, JSON.stringify(hidden));
-    } catch {
-      columnStatus.textContent = "无法保存备选列目设置，请检查浏览器存储。";
-      return;
-    }
-    renderColumnEditor();
-    columnStatus.textContent = name ? "已隐藏「" + name + "」。" : "已恢复隐藏的备选列目。";
-    focusFirstPreset();
-  }
-
-  function renderPresets(columns, hidden) {
-    const list = $("asset-presets-list");
-    list.replaceChildren();
-    $("restore-asset-presets").hidden = hidden.length === 0;
-    const available = presets.filter((name) =>
-      !hidden.includes(name) && !columns.some((column) => column.name === name));
-    if (!available.length) {
-      const empty = document.createElement("p");
-      empty.textContent = "暂无可添加的备选列目。";
-      list.append(empty);
-    }
-    for (const name of available) {
-      const type = inferAssetType(name);
-      const item = document.createElement("span");
-      item.className = "asset-preset";
-      item.dataset.assetType = type;
-      const add = document.createElement("button");
-      add.type = "button";
-      add.textContent = "＋ " + name;
-      add.setAttribute("aria-label", "添加" + name);
-      add.addEventListener("click", () => {
-        if (updateColumn(null, name, type)) focusFirstPreset();
-      });
-      const hide = document.createElement("button");
-      hide.type = "button";
-      hide.textContent = "×";
-      hide.setAttribute("aria-label", "隐藏备选列目" + name);
-      hide.title = "隐藏备选列目";
-      hide.addEventListener("click", () => setPresetVisibility(name));
-      item.append(add, hide);
-      list.append(item);
-    }
-  }
-
   function renderColumnEditor() {
     const list = $("asset-column-list");
     list.replaceChildren();
     let columns;
     try {
       ({ columns } = readAssets());
-      renderPresets(columns, readHiddenPresets());
     } catch {
       columnStatus.textContent = "无法读取列目，请检查浏览器存储。";
       return;
     }
     if (!columns.length) {
       const empty = document.createElement("p");
-      empty.textContent = "还没有选中的列目。";
+      empty.textContent = "还没有资产列目。";
       list.append(empty);
     }
     for (const column of columns) {
@@ -499,7 +468,6 @@
       columnType.focus();
     }
   });
-  $("restore-asset-presets").addEventListener("click", () => setPresetVisibility());
   $("manage-asset-columns").addEventListener("click", openColumnEditor);
   $("close-asset-columns").addEventListener("click", () => columnsDialog.close());
 
@@ -559,10 +527,6 @@
     if (validDate(dateField.value) && dateField.value.slice(0, 7) !== loadedMonth) loadMonthFields();
   });
   window.addEventListener("storage", (event) => {
-    if (event.key === hiddenPresetsKey) {
-      if (columnsDialog.open) renderColumnEditor();
-      return;
-    }
     if (event.key !== key && event.key !== legacySnapshotsKey && event.key !== legacyColumnsKey && event.key !== null) return;
     if (!$("assets").hidden) renderAssets();
     if (columnsDialog.open) renderColumnEditor();
@@ -663,7 +627,7 @@
         assets: readAssets(),
         budgets: readBudgets(),
         budgetNames: readBudgetNames(),
-        hiddenPresets: readHiddenPresets(),
+        hiddenPresets: [], // Required by earlier versions of the backup importer.
       };
       const url = URL.createObjectURL(new Blob([JSON.stringify(backup)], { type: "application/json" }));
       const download = document.createElement("a");
@@ -708,7 +672,6 @@
     const changes = [
       [storageKey, pendingBackup.records],
       [key, pendingBackup.assets],
-      [hiddenPresetsKey, pendingBackup.hiddenPresets],
     ];
     if (pendingBackup.budgets) changes.push([budgetKey, pendingBackup.budgets]);
     if (pendingBackup.budgetNames) changes.push([budgetNamesKey, pendingBackup.budgetNames]);
