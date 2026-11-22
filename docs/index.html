@@ -386,7 +386,7 @@ dialog::backdrop { background: #102f3b70; }
 }
 
 </style>
-  <meta name="ledger-version" content="cc718171dce57d5e">
+  <meta name="ledger-version" content="0b48d604028f95c9">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
@@ -2763,6 +2763,15 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
       day.getUTCMonth() === Number(match[2]) - 1 && day.getUTCDate() === Number(match[3]);
   }
 
+  function amountPriority(text) {
+    if (/实付|实收|实际支付|实际付款|支付金额|付款金额|成功付款/.test(text)) return 6;
+    if (/应付款|应付金额|应支付|应收款|应收金额/.test(text)) return 5;
+    if (/商品总价|订单总额|订单金额|总金额|总价|合计|总计|价税合计/.test(text)) return 4;
+    if (/交易金额|收款金额|到账金额|收入金额|转入金额/.test(text)) return 3;
+    if (/金额/.test(text)) return 2;
+    return 0;
+  }
+
   function parseReceipt(text) {
     const lines = text.normalize("NFKC").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
     const candidates = new Map();
@@ -2779,32 +2788,38 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
       if (!parsedMerchant && /^(?:商户名称|商家名称|收款商户|收款方|商户|收款人)[:：]/.test(compact)) {
         parsedMerchant = compact.replace(/^(?:商户名称|商家名称|收款商户|收款方|商户|收款人)[:：]/, "");
       }
-      const keyword = /实付|实收|实付款|支付金额|付款金额|交易金额|合计|总计|价税合计|金额/.test(compact);
+      const priority = amountPriority(compact);
+      const keyword = priority > 0;
       const monetary = /[¥￥]|RMB|CNY|人民币|元/.test(line);
-      const priorKeyword = index > 0 && /实付|支付金额|交易金额|合计|总计/.test(lines[index - 1].replace(/\s/g, ""));
-      if (/订单号|交易单号|商户单号|银行卡号|电话|手机|余额|优惠|折扣|税率|找零/.test(compact) && !/实付|支付金额/.test(compact)) continue;
+      const previous = index > 0 ? lines[index - 1].replace(/\s/g, "") : "";
+      const priorPriority = /\d/.test(previous) ? 0 : amountPriority(previous);
+      if (/订单号|交易单号|商户单号|银行卡号|电话|手机|余额|优惠|折扣|税率|找零/.test(compact) && priority < 5) continue;
       const matches = line.matchAll(/[-−]?\s*(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?/g);
       for (const match of matches) {
         const number = match[0].replace(/[\s,]/g, "").replace("−", "-");
-        if (!keyword && !monetary && !priorKeyword && !number.includes(".")) continue;
-        if (/\d{3,}/.test(number.split(".")[0]) && !number.includes(".") && !monetary && !keyword) continue;
+        if (!keyword && !monetary && !priorPriority && !number.includes(".")) continue;
+        if (/\d{3,}/.test(number.split(".")[0]) && !number.includes(".") && !monetary && !keyword && !priorPriority) continue;
         if (dateMatch && !keyword && !monetary) continue;
+        const before = line.slice(0, match.index).trimEnd();
+        const after = line.slice(match.index + match[0].length).trimStart();
+        if (/[x×*]$/i.test(before) || /^(?:kg|g\b|克|千克|件|份|包|个|%|％)/i.test(after)) continue;
         const [whole, decimals = ""] = number.replace("-", "").split(".");
         const cents = (Number(whole) * 100 + Number(decimals.padEnd(2, "0"))) * (number.startsWith("-") ? -1 : 1);
         if (!Number.isSafeInteger(cents) || cents === 0 || Math.abs(cents) > 99999999999) continue;
-        const score = (/实付|实收|付款金额|支付金额/.test(compact) ? 5 : keyword ? 3 : priorKeyword ? 2 : 0) + (monetary ? 2 : 0);
+        const score = Math.max(priority, priorPriority) * 10 + (monetary ? 2 : 0);
+        const label = priorPriority > priority ? lines[index - 1] + " " + line : line;
         if (!candidates.has(cents) || candidates.get(cents).score < score) {
-          candidates.set(cents, { cents, score, label: line.slice(0, 40) });
+          candidates.set(cents, { cents, score, label: label.slice(0, 60) });
         }
       }
     }
     if (!parsedMerchant) {
       parsedMerchant = lines.slice(0, 5).find(line =>
-        /餐厅|餐饮|饭店|咖啡|商店|超市|便利店|酒店|书店|药房|有限公司/.test(line) &&
+        /餐厅|餐饮|饭店|咖啡|商店|超市|便利店|酒店|书店|药房|有限公司|门店|店[)）]/.test(line) &&
         !/金额|地址|时间|日期|订单/.test(line.replace(/\s/g, ""))) ?? "";
     }
     const normalized = lines.join("").replace(/\s/g, "");
-    const parsedType = /收款成功|收入金额|转入金额|到账金额/.test(normalized) ? "income" : /支付成功|付款成功|实付|消费/.test(normalized) ? "expense" : "";
+    const parsedType = /收款成功|收入金额|转入金额|到账金额/.test(normalized) ? "income" : /支付成功|付款成功|实付|应付款|应付金额|商品总价|消费/.test(normalized) ? "expense" : "";
     let parsedCategory = "";
     if (parsedType !== "income") {
       if (/餐厅|餐饮|饭店|咖啡|奶茶|午餐|早餐|晚餐/.test(normalized)) parsedCategory = "餐饮";
@@ -2830,14 +2845,16 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
     for (const candidate of result.candidates) {
       amount.add(new Option(money(candidate.cents) + " · " + candidate.label, String(candidate.cents)));
     }
-    if (result.candidates.length) amount.value = String(result.candidates[0].cents);
+    const recommended = result.candidates.length === 1 || result.candidates[0]?.score >= 30;
+    if (recommended) amount.value = String(result.candidates[0].cents);
     date.value = result.date;
     syncDateDisplay(date);
     merchant.value = result.merchant;
     type.value = result.type;
     refreshCategories(result.category);
     $("receipt-raw").textContent = text.slice(0, 15000);
-    error.textContent = result.candidates.length ? "" : "未找到可用金额，请核对识别原文并手动填写。";
+    error.textContent = !result.candidates.length ? "未找到可用金额，请核对识别原文并手动填写。"
+      : recommended ? "" : "识别到多个金额，请选择本次要记录的金额。";
     reviewRequest = request;
     review.hidden = false;
     $("receipt-review-title").scrollIntoView({ block: "nearest" });
@@ -2963,6 +2980,7 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
   $("dismiss-receipt").addEventListener("click", () => cancel(true));
   document.addEventListener("photochange", () => cancel(true));
   editor.addEventListener("close", () => {
+    if (editor.open) return;
     cancel(true);
     photoRecognitionSource = "";
   });
