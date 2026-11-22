@@ -285,6 +285,13 @@ dialog::backdrop { background: #102f3b70; }
 #photo-preview { display: block; width: 100%; height: auto; max-height: 220px; object-fit: contain; border-radius: 8px; background: #f2f8f8; }
 .photo-actions { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
 .photo-actions .danger { margin-inline-start: auto; }
+.receipt-review { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #f4fafb; }
+.receipt-review h3 { margin: 0; font-size: .9375rem; }
+.receipt-review .field-grid { gap: 8px; }
+.receipt-text { margin: 0 0 12px; font-size: .8125rem; }
+.receipt-text summary { cursor: pointer; color: var(--muted); }
+.receipt-text pre { max-height: 180px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+#receipt-progress { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
 #photo-status { margin-top: 6px; color: var(--muted); font-size: 12px; }
 #photo-status:empty { display: none; }
 .danger { background: #fff0f1; border: 0; color: #a32b38; border-radius: 8px; padding: 8px 10px; font-size: 13px; }

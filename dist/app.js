@@ -34,6 +34,7 @@ let entryPoint = null;
 let photoRequest = 0;
 let entryPhoto = "";
 let photoSource = "";
+let photoRecognitionSource = "";
 let photoTurns = 0;
 const form = $("entry-form");
 const fields = form.elements;
@@ -634,16 +635,19 @@ function showPhoto(photo) {
   else $("photo-preview").removeAttribute("src");
 }
 
-function resetPhoto(photo) {
+function resetPhoto(photo, recognitionSource = photo) {
   photoSource = photo;
+  photoRecognitionSource = recognitionSource;
   photoTurns = 0;
   showPhoto(photo);
+  document.dispatchEvent(new Event("photochange"));
 }
 
 function setPhotoProcessing(processing) {
   $("save-entry").disabled = processing;
   $("rotate-photo-left").disabled = processing;
   $("rotate-photo-right").disabled = processing;
+  $("recognize-photo").disabled = processing;
 }
 
 function loadPhoto(url) {
@@ -678,7 +682,13 @@ async function preparePhoto(file) {
         return { error: "无法读取这张照片，请重新拍照或从相册选择 JPG 或 PNG 图片。" };
       }
     }
-    return { photo: encodePhoto(image, image.naturalWidth, image.naturalHeight) };
+    const photo = encodePhoto(image, image.naturalWidth, image.naturalHeight);
+    const scale = Math.min(1, 2400 / Math.max(image.naturalWidth, image.naturalHeight));
+    const recognitionSource = document.createElement("canvas");
+    recognitionSource.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    recognitionSource.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    recognitionSource.getContext("2d").drawImage(image, 0, 0, recognitionSource.width, recognitionSource.height);
+    return { photo, recognitionSource };
   } finally {
     if (url) URL.revokeObjectURL(url);
   }
@@ -720,6 +730,7 @@ async function rotatePhoto(direction) {
     }
     photoTurns = turns;
     showPhoto(photo);
+    document.dispatchEvent(new Event("photochange"));
     status.textContent = "照片方向已调整，保存记录后生效。";
   } catch {
     if (editor.open && request === photoRequest) status.textContent = "无法旋转这张照片。";
@@ -738,6 +749,7 @@ async function selectPhoto(event) {
   if (!file) return;
   const request = ++photoRequest;
   const status = $("photo-status");
+  document.dispatchEvent(new Event("photochange"));
   if (!file.size || file.size > 20 * 1024 * 1024) {
     status.textContent = file.size ? "请选择 20 MB 以内的照片。" : "没有读取到照片，请重新拍照或从相册选择。";
     setPhotoProcessing(false);
@@ -746,9 +758,9 @@ async function selectPhoto(event) {
   setPhotoProcessing(true);
   status.textContent = "正在处理照片…";
   try {
-    const { photo, error } = await preparePhoto(file);
+    const { photo, error, recognitionSource } = await preparePhoto(file);
     if (editor.open && request === photoRequest) {
-      if (photo) resetPhoto(photo);
+      if (photo) resetPhoto(photo, recognitionSource);
       status.textContent = error ?? "照片将在保存记录时附加到账单。";
     }
   } catch {

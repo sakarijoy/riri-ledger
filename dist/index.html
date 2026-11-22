@@ -10,6 +10,7 @@
   <script defer src="app.js"></script>
   <script defer src="assets.js"></script>
   <script defer src="github-sync.js"></script>
+  <script defer src="receipt.js"></script>
 </head>
 <body>
   <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -272,12 +273,34 @@
           <div id="photo-attachment" hidden>
             <img id="photo-preview" alt="账单照片" width="440" height="220">
             <div class="photo-actions">
+              <button type="button" id="recognize-photo" class="attachment-action">识别账单</button>
               <button type="button" id="rotate-photo-left" class="attachment-action">向左旋转</button>
               <button type="button" id="rotate-photo-right" class="attachment-action">向右旋转</button>
               <button type="button" id="remove-photo" class="danger">移除照片</button>
             </div>
           </div>
           <p id="photo-status" role="status"></p>
+          <div id="receipt-progress" hidden>
+            <p id="receipt-status" class="backup-note" role="status"></p>
+            <button id="cancel-receipt" type="button" class="secondary">取消识别</button>
+          </div>
+          <section id="receipt-review" class="receipt-review" aria-labelledby="receipt-review-title" hidden>
+            <h3 id="receipt-review-title">核对识别结果</h3>
+            <p class="backup-note">选择实付金额，核对日期和商户后填入账单。</p>
+            <label class="field">金额<select id="receipt-amount"></select></label>
+            <label class="field">日期<span class="date-control"><span class="date-display" aria-hidden="true"><span class="date-value">选择日期</span><svg aria-hidden="true"><use href="#calendar"/></svg></span><input id="receipt-date" type="date" min="0001-01-01" max="9999-12-31"></span></label>
+            <label class="field">商户或备注<textarea id="receipt-merchant" rows="1" maxlength="100" autocomplete="off"></textarea></label>
+            <div class="field-grid">
+              <label class="field">收支类型<select id="receipt-type"><option value="">保留当前类型</option><option value="expense">支出</option><option value="income">收入</option></select></label>
+              <label class="field">分类<select id="receipt-category"></select></label>
+            </div>
+            <details class="receipt-text"><summary>查看识别原文</summary><pre id="receipt-raw"></pre></details>
+            <p id="receipt-error" class="form-error" role="status"></p>
+            <div class="photo-actions">
+              <button id="apply-receipt" type="button" class="primary">确认填入</button>
+              <button id="dismiss-receipt" type="button" class="secondary">取消</button>
+            </div>
+          </section>
         </div>
       </div>
       <footer class="dialog-footer">
