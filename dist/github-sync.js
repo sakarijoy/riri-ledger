@@ -3,6 +3,7 @@
 
   const settingsKey = "riri-github-summary-settings-v1";
   const sessionKey = "riri-github-summary-token-v1";
+  const organization = "SZ2825";
   const loginPattern = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/i;
   const repositoryPattern = /^[a-z0-9][a-z0-9-]{0,38}\/[a-z0-9._-]{1,100}$/i;
   const tokenPattern = /^github_pat_[a-zA-Z0-9_]+$/;
@@ -38,8 +39,25 @@
   }
 
   function showCachedTotals() {
-    githubPartnerTotals = cache.partner;
+    githubPartnerTotals = combinedAccess ? cache.partner : null;
     if (!$("combined").hidden) render();
+  }
+
+  function setAccess(allowed) {
+    if (combinedAccess === allowed) return;
+    combinedAccess = allowed;
+    githubPartnerTotals = allowed ? cache.partner : null;
+    if (!allowed) {
+      for (const id of ["combined-income", "combined-expense", "combined-balance"]) $(id).textContent = "—";
+      $("combined-trend-list").replaceChildren();
+    }
+    document.dispatchEvent(new Event("combinedaccesschange"));
+  }
+
+  function accessError(message) {
+    const failure = new Error(message);
+    failure.accessDenied = true;
+    return failure;
   }
 
   function configureStatus() {
@@ -69,6 +87,34 @@
       return { status: response.status, data: response.ok ? await response.json() : null };
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  async function verifyMember(credential) {
+    for (let page = 1; page <= 10; page += 1) {
+      const memberships = await request("/user/memberships/orgs?state=active&per_page=100&page=" + page, credential);
+      if (memberships.status !== 200 || !Array.isArray(memberships.data)) break;
+      if (memberships.data.some((membership) => membership.state === "active" &&
+        membership.organization?.login?.toLowerCase() === organization.toLowerCase())) return;
+      if (memberships.data.length < 100) break;
+    }
+    const membership = await request("/user/memberships/orgs/" + organization, credential);
+    if (membership.status === 200 && membership.data.state === "active" &&
+      membership.data.organization?.login?.toLowerCase() === organization.toLowerCase()) return;
+    throw accessError(membership.status === 403
+      ? "无法验证组织身份，请给令牌添加组织 Members 只读权限，审批后重试。"
+      : "请使用已加入 SZ2825 组织的账号，确认令牌已获得组织批准。");
+  }
+
+  async function verifyConnection(connection, credential) {
+    const account = await request("/user", credential);
+    if (account.status !== 200 || account.data.login?.toLowerCase() !== connection.login) {
+      throw accessError("账号验证失败，请重新连接自己的 GitHub 令牌。");
+    }
+    await verifyMember(credential);
+    const repo = await request(repoPath(connection), credential);
+    if (repo.status !== 200 || !isPrivateRepo(repo.data, connection)) {
+      throw accessError("无法访问原来的私有仓库，请检查令牌授权和仓库权限。");
     }
   }
 
@@ -164,6 +210,9 @@
     const stillConnected = () => settings === connection && token === credential;
     connectionStatus("正在同步…");
     try {
+      await verifyConnection(connection, credential);
+      if (!stillConnected()) return;
+      setAccess(true);
       const local = localMonths();
       if (!validMonths(local)) throw Error("本机有月份金额超出同步范围。");
       const periods = new Set([...Object.keys(local), ...Object.keys(cache.sent)]);
@@ -184,6 +233,7 @@
       connectionStatus("最近同步 " + new Date().toLocaleTimeString("zh-CN", { hour12: false }));
     } catch (failure) {
       if (stillConnected()) {
+        if (failure.accessDenied) setAccess(false);
         connectionStatus(failure instanceof TypeError || failure.name === "AbortError"
           ? "无法连接 GitHub，稍后会重试。"
           : failure.message || "同步失败，请稍后重试。");
@@ -237,6 +287,7 @@
       const branch = repo.data.default_branch;
       const folder = await request("/repos/" + repository + "/contents?ref=" + encodeURIComponent(branch), credential);
       if (folder.status !== 200) throw Error("请先在仓库创建 README，并确认令牌有 Contents 读写权限。");
+      await verifyMember(credential);
       if (!dialog.open || version !== setupVersion) return;
       const next = { repository, repoId: repo.data.id, branch, login, partner };
       if (remember) next.rememberedToken = credential;
@@ -246,6 +297,7 @@
       settings = next;
       token = credential;
       cache = loadCache(settings);
+      setAccess(true);
       showCachedTotals();
       dialog.close();
       sync();
@@ -268,6 +320,7 @@
     settings = null;
     token = null;
     cache = loadCache(null);
+    setAccess(false);
     showCachedTotals();
     configureStatus();
     dialog.close();
@@ -282,6 +335,7 @@
   window.addEventListener("storage", (event) => {
     if (event.key === storageKey) sync();
     if (event.key === settingsKey || event.key === null) {
+      setAccess(false);
       settings = storageValue(localStorage, settingsKey);
       sessionStorage.removeItem(sessionKey);
       token = settings?.rememberedToken ?? null;

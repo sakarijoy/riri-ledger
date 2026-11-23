@@ -322,6 +322,7 @@ dialog::backdrop { background: #102f3b70; }
   .brand-icon { width: 36px; height: 36px; }
   .brand small { display: none; }
   .page-nav { position: fixed; z-index: 3; inset: auto 0 0; height: var(--mobile-nav-height); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 0 var(--mobile-gutter) env(safe-area-inset-bottom); border-top: 1px solid var(--line); background: white; }
+  .page-nav:has(#nav-combined[hidden]) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .page-nav a.nav { position: relative; min-height: 0; justify-content: center; gap: 6px; padding: 4px; border-radius: 0; font-size: 12px; }
   .page-nav a.nav svg { width: 17px; height: 17px; }
   .page-nav a.nav.active { background: transparent; color: var(--accent); }

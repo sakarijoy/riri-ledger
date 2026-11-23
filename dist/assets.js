@@ -534,7 +534,8 @@
   function route() {
     const pages = ["overview", "assets", "combined"];
     const hash = window.location.hash.slice(1);
-    const page = pages.includes(hash) ? hash : "overview";
+    const page = pages.includes(hash) && (hash !== "combined" || combinedAccess) ? hash : "overview";
+    $("nav-combined").hidden = !combinedAccess;
     $("export").hidden = page !== "overview";
     for (const id of pages) {
       const active = id === page;
@@ -551,6 +552,7 @@
     }
   }
   window.addEventListener("hashchange", route);
+  document.addEventListener("combinedaccesschange", route);
   route();
 
   const backupDialog = $("backup-dialog");

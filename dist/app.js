@@ -78,6 +78,7 @@ function load() {
 
 let records = load();
 let githubPartnerTotals = null;
+let combinedAccess = false;
 window.addEventListener("storage", (event) => {
   if (event.key === storageKey || event.key === null) {
     records = load();

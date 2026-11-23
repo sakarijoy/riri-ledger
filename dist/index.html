@@ -42,7 +42,7 @@
         <nav class="page-nav" aria-label="账本页面">
           <a id="nav-overview" href="#overview" class="nav active" aria-current="page"><svg aria-hidden="true"><use href="#grid"/></svg><span>账本概览</span></a>
           <a id="nav-assets" href="#assets" class="nav"><svg aria-hidden="true"><use href="#wallet"/></svg><span>月度资产</span></a>
-          <a id="nav-combined" href="#combined" class="nav"><svg aria-hidden="true"><use href="#people"/></svg><span>两人合计</span></a>
+          <a id="nav-combined" href="#combined" class="nav" hidden><svg aria-hidden="true"><use href="#people"/></svg><span>两人合计</span></a>
         </nav>
         <button class="nav" id="export" type="button"><svg><use href="#download"/></svg><span>导出本月</span></button>
       </div>
@@ -210,7 +210,7 @@
     <form id="github-sync-form" autocomplete="off">
       <header class="dialog-header"><h2 id="github-sync-dialog-title">连接 GitHub 私有仓库</h2><button id="close-github-sync" type="button" class="icon-button" aria-label="关闭"><svg aria-hidden="true"><use href="#close"/></svg></button></header>
       <div class="record-editor-body">
-        <p class="backup-note">两人填写同一个私有仓库，各自输入自己的细粒度令牌。连接后会发布本机账本的月度收支汇总。</p>
+        <p class="backup-note">SZ2825 组织成员验证后可查看两人合计。两人填写同一个私有仓库，各自输入自己的细粒度令牌，连接后发布本机账本的月度收支汇总。</p>
         <label class="field">共享仓库<input name="repository" type="text" placeholder="组织名/仓库名" required maxlength="144" autocapitalize="none" spellcheck="false"></label>
         <label class="field">对方的 GitHub 用户名<input name="partner" type="text" required maxlength="39" autocapitalize="none" spellcheck="false"></label>
         <label class="field">自己的细粒度令牌<input name="token" type="password" required maxlength="255" autocomplete="off" placeholder="仅授权共享仓库的 Contents 读写"></label>
