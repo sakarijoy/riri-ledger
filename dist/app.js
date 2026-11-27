@@ -2,6 +2,7 @@
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "riri-ledger-v1";
+const entryCategoriesKey = "riri-entry-categories-v1";
 const budgetKey = "riri-expense-plans-v1";
 const budgetNamesKey = "riri-expense-plan-names-v1";
 const partnerTotalsKey = "riri-partner-monthly-totals-v1";
@@ -22,6 +23,38 @@ const categories = {
     "其他": ["wallet", "#777689", "#eeedf2"],
   },
 };
+
+function validEntryCategory(name) {
+  return typeof name === "string" && name.length > 0 && name.length <= 24 &&
+    name === name.trim() && !/[\r\n]/.test(name);
+}
+
+function validEntryCategories(value) {
+  return value != null && ["income", "expense"].every((type) => {
+    const names = value[type];
+    return Array.isArray(names) && names.length > 0 &&
+      names.every(validEntryCategory) && new Set(names).size === names.length;
+  });
+}
+
+function readEntryCategories() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(entryCategoriesKey));
+    if (validEntryCategories(saved)) return saved;
+  } catch {
+    // Default categories are available if settings cannot be read.
+  }
+  return { expense: Object.keys(categories.expense), income: Object.keys(categories.income) };
+}
+
+function entryCategoryStyle(type, name) {
+  const presets = categories[type];
+  if (Object.hasOwn(presets, name)) return presets[name];
+  const palette = Object.values(presets);
+  let hash = 0;
+  for (const character of name) hash = Math.imul(hash, 31) + character.codePointAt(0);
+  return palette[(hash >>> 0) % palette.length];
+}
 
 const today = new Intl.DateTimeFormat("sv-SE", {
   year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Shanghai",
@@ -135,7 +168,7 @@ function renderEntries(entries) {
   }
   for (const entry of visible) {
     const row = $("entry-template").content.firstElementChild.cloneNode(true);
-    const [icon, color, background] = categories[entry.type][entry.category];
+    const [icon, color, background] = entryCategoryStyle(entry.type, entry.category);
     const badge = row.querySelector(".category-icon");
     badge.style.setProperty("--category-color", color);
     badge.style.setProperty("--category-bg", background);
@@ -201,7 +234,7 @@ function renderCategoryChart(entries, total, type) {
     totals.set(entry.category, (totals.get(entry.category) ?? 0) + entry.amount);
   }
   const rows = Array.from(totals, ([name, amount]) => ({
-    label: name, amount, color: categories[type][name][1],
+    label: name, amount, color: entryCategoryStyle(type, name)[1],
   })).sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
   drawChart(rows, {
     title: label + "分类",
@@ -401,9 +434,34 @@ function shiftMonth(step) {
   render();
 }
 
+function currentEntryCategory() {
+  return form.querySelector('input[name="category"]:checked')?.value;
+}
+
 function updateCategories(selected) {
-  fields.category.replaceChildren(...Object.keys(categories[fields.type.value])
-    .map((name) => new Option(name, name, false, name === selected)));
+  const type = fields.type.value;
+  const names = readEntryCategories()[type];
+  const original = editingId && records?.find((entry) => entry.id === editingId);
+  if (original && original.type === type && !names.includes(original.category)) {
+    names.push(original.category);
+  }
+  const fallback = original?.type === type ? original.category : names[0];
+  const current = names.includes(selected) ? selected : fallback;
+  const options = names.map((name) => {
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "category";
+    input.value = name;
+    input.required = true;
+    input.checked = name === current;
+    input.className = "sr-only";
+    const caption = document.createElement("span");
+    caption.textContent = name;
+    label.append(input, caption);
+    return label;
+  });
+  $("entry-category-options").replaceChildren(...options);
 }
 
 function openEditor(entry) {
@@ -799,7 +857,7 @@ form.addEventListener("submit", (event) => {
   const entry = {
     id: editingId ?? crypto.randomUUID(),
     type: fields.type.value,
-    category: fields.category.value,
+    category: currentEntryCategory(),
     amount,
     date: fields.date.value,
     location: locationLabel(fields.location.value),
@@ -861,6 +919,118 @@ $("export").addEventListener("click", () => {
 $("add").addEventListener("click", () => openEditor());
 $("ledger-search").addEventListener("input", () => renderEntries(monthRecords()));
 $("close-editor").addEventListener("click", () => editor.close());
+
+const categoryDialog = $("entry-categories-dialog");
+const categoryForm = $("entry-category-form");
+const categoryName = $("entry-category-name");
+const categoryStatus = $("entry-category-status");
+let renamingCategory = null;
+
+function setCategoryRename(name = null) {
+  renamingCategory = name;
+  categoryName.value = name ?? "";
+  $("save-entry-category").textContent = name === null ? "添加分类" : "保存名称";
+  $("cancel-entry-category-rename").hidden = name === null;
+}
+
+function renderCategoryManager() {
+  const names = readEntryCategories()[fields.type.value];
+  const items = names.map((name) => {
+    const row = document.createElement("li");
+    const label = document.createElement("span");
+    label.textContent = name;
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "secondary";
+    edit.textContent = "改名";
+    edit.setAttribute("aria-label", "改名：" + name);
+    edit.addEventListener("click", () => {
+      setCategoryRename(name);
+      categoryStatus.textContent = "";
+      categoryName.focus();
+      categoryName.select();
+    });
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "danger";
+    remove.textContent = "删除";
+    remove.setAttribute("aria-label", "删除：" + name);
+    remove.disabled = names.length === 1;
+    remove.addEventListener("click", () => {
+      const next = readEntryCategories();
+      const type = fields.type.value;
+      if (next[type].length <= 1) {
+        categoryStatus.textContent = "每种收支类型至少要保留一个分类。";
+        return;
+      }
+      next[type] = next[type].filter((item) => item !== name);
+      if (saveEntryCategories(next, currentEntryCategory(), "已删除分类")) categoryName.focus();
+    });
+    row.append(label, edit, remove);
+    return row;
+  });
+  $("entry-category-list").replaceChildren(...items);
+}
+
+function saveEntryCategories(next, selected, message) {
+  try {
+    localStorage.setItem(entryCategoriesKey, JSON.stringify(next));
+  } catch {
+    categoryStatus.textContent = "无法保存分类，请检查浏览器存储。";
+    return false;
+  }
+  updateCategories(selected);
+  setCategoryRename();
+  renderCategoryManager();
+  categoryStatus.textContent = message;
+  return true;
+}
+
+$("manage-entry-categories").addEventListener("click", () => {
+  closeAmountKeypad();
+  $("entry-categories-title").textContent = fields.type.value === "income" ? "管理收入分类" : "管理支出分类";
+  categoryStatus.textContent = "";
+  setCategoryRename();
+  renderCategoryManager();
+  categoryDialog.showModal();
+});
+$("close-entry-categories").addEventListener("click", () => categoryDialog.close());
+$("cancel-entry-category-rename").addEventListener("click", () => {
+  setCategoryRename();
+  categoryStatus.textContent = "";
+  categoryName.focus();
+});
+categoryForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = categoryName.value.trim();
+  if (!validEntryCategory(name)) {
+    categoryStatus.textContent = "请输入 1 至 24 个字符的分类名称。";
+    return;
+  }
+  const next = readEntryCategories();
+  const names = next[fields.type.value];
+  if (names.includes(name) && name !== renamingCategory) {
+    categoryStatus.textContent = "已有同名分类。";
+    return;
+  }
+  const previous = currentEntryCategory();
+  if (renamingCategory === null) {
+    names.push(name);
+    saveEntryCategories(next, editingId ? previous : name, "已添加分类");
+  } else {
+    const index = names.indexOf(renamingCategory);
+    if (index === -1) {
+      setCategoryRename();
+      renderCategoryManager();
+      categoryStatus.textContent = "该分类已变更，请重新选择。";
+      return;
+    }
+    names[index] = name;
+    const selected = !editingId && previous === renamingCategory ? name : previous;
+    saveEntryCategories(next, selected, "已保存分类名称");
+  }
+});
+
 monthButtons.forEach((button) => button.addEventListener("click", () => shiftMonth(Number(button.dataset.monthStep))));
 monthInputs.forEach((input) => input.addEventListener("change", () => {
   if (input.value && input.validity.valid) month = input.value;

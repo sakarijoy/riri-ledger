@@ -138,7 +138,7 @@
   function refreshCategories(selected = "") {
     const selectedType = type.value || fields.type.value;
     category.replaceChildren(new Option("保留当前分类", ""));
-    for (const name of Object.keys(categories[selectedType])) {
+    for (const name of readEntryCategories()[selectedType]) {
       category.add(new Option(name, name, false, name === selected));
     }
   }
@@ -274,7 +274,7 @@
       fields.type.value = type.value;
       updateCategories();
     }
-    if (category.value && Object.hasOwn(categories[fields.type.value], category.value)) fields.category.value = category.value;
+    if (category.value && readEntryCategories()[fields.type.value].includes(category.value)) updateCategories(category.value);
     cancel(true);
     $("photo-status").textContent = "识别结果已填入，请核对后保存记录。";
     entryAmount.button.focus();

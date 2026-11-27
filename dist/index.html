@@ -254,11 +254,15 @@
       <div id="entry-editor-body" class="record-editor-body">
         <fieldset class="type"><legend class="sr-only">收支类型</legend><label><input type="radio" name="type" value="expense" checked>支出</label><label><input type="radio" name="type" value="income">收入</label></fieldset>
         <div id="entry-amount-field"></div>
-        <div class="field-grid">
-          <label class="field">分类<select name="category" required></select></label>
-          <label class="field">日期<span class="date-control"><span class="date-display" aria-hidden="true"><span class="date-value">选择日期</span><svg><use href="#calendar"/></svg></span><input name="date" type="date" min="0001-01-01" max="9999-12-31" required></span></label>
+        <div class="entry-category-field">
+          <div class="entry-category-heading">
+            <span id="entry-category-label">分类</span>
+            <button type="button" id="manage-entry-categories" class="attachment-action">管理分类</button>
+          </div>
+          <div id="entry-category-options" role="group" aria-labelledby="entry-category-label"></div>
         </div>
-        <div class="location-field">
+        <label class="field">日期<span class="date-control"><span class="date-display" aria-hidden="true"><span class="date-value">选择日期</span><svg><use href="#calendar"/></svg></span><input name="date" type="date" min="0001-01-01" max="9999-12-31" required></span></label>
+        <div class="location-field" hidden>
           <label for="entry-location">地点</label>
           <a id="open-amap" class="attachment-action" href="https://www.amap.com/" target="_blank" rel="noopener noreferrer">打开高德地图<svg aria-hidden="true"><use href="#up"/></svg></a>
           <div class="field"><textarea id="entry-location" name="location" rows="1" autocomplete="off" maxlength="80" placeholder="选填，例如店名或地址"></textarea></div>
@@ -308,6 +312,20 @@
         <button type="button" id="delete" class="danger" hidden>删除记录</button><button id="save-entry" type="submit" class="primary">保存记录</button>
       </footer>
     </form>
+  </dialog>
+  <dialog id="entry-categories-dialog" aria-labelledby="entry-categories-title">
+    <header class="dialog-header">
+      <h2 id="entry-categories-title">管理分类</h2>
+      <button type="button" id="close-entry-categories" class="icon-button" aria-label="关闭" autofocus><svg aria-hidden="true"><use href="#close"/></svg></button>
+    </header>
+    <form id="entry-category-form" autocomplete="off">
+      <label class="field">分类名称<input id="entry-category-name" type="text" maxlength="24" required autocomplete="off" enterkeyhint="done"></label>
+      <button type="button" id="cancel-entry-category-rename" class="secondary" hidden>取消改名</button>
+      <button type="submit" id="save-entry-category" class="primary">添加分类</button>
+    </form>
+    <p class="category-help">改名或删除后，已有账单保留原分类。</p>
+    <p id="entry-category-status" class="category-help" role="status"></p>
+    <ul id="entry-category-list"></ul>
   </dialog>
   <div id="amount-keypad" role="group" aria-label="金额数字键盘" hidden>
     <button type="button" data-key="1">1</button>

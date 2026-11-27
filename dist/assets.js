@@ -568,6 +568,7 @@
   function validBackup(backup) {
     if (backup?.format !== "riri-ledger" || backup.version !== 1 ||
       !Array.isArray(backup.records) || !Array.isArray(backup.hiddenPresets)) return false;
+    if (backup.entryCategories !== undefined && !validEntryCategories(backup.entryCategories)) return false;
     if (backup.budgets !== undefined && (!isObject(backup.budgets) ||
       !Object.entries(backup.budgets).every(([period, plan]) => {
         const monthly = validMonth(period);
@@ -586,7 +587,7 @@
     const entryIds = new Set();
     for (const entry of backup.records) {
       if (!isObject(entry) || typeof entry.id !== "string" || !entry.id || entryIds.has(entry.id) ||
-        !Object.hasOwn(categories, entry.type) || !Object.hasOwn(categories[entry.type], entry.category) ||
+        !Object.hasOwn(categories, entry.type) || !validEntryCategory(entry.category) ||
         typeof entry.date !== "string" || !validDate(entry.date) ||
         !Number.isSafeInteger(entry.amount) || entry.amount === 0 || Math.abs(entry.amount) > 99999999999 ||
         typeof entry.note !== "string" || (entry.location !== undefined && typeof entry.location !== "string") ||
@@ -634,6 +635,7 @@
         format: "riri-ledger",
         version: 1,
         records: JSON.parse(localStorage.getItem(storageKey) ?? "[]"),
+        entryCategories: readEntryCategories(),
         assets: readAssets(),
         budgets: readBudgets(),
         budgetNames: readBudgetNames(),
@@ -679,6 +681,7 @@
   restoreButton.addEventListener("click", () => {
     if (!pendingBackup) return;
     const dataTypes = ["账单", "月度资产"];
+    if (pendingBackup.entryCategories) dataTypes.push("账单分类");
     if (pendingBackup.budgets) dataTypes.push("支出额度");
     if (pendingBackup.partnerTotals) dataTypes.push("对方收支汇总");
     if (!window.confirm("恢复会替换当前浏览器里的" + dataTypes.join("、") + "。确定继续？")) return;
@@ -687,6 +690,7 @@
       [key, pendingBackup.assets],
     ];
     if (pendingBackup.budgets) changes.push([budgetKey, pendingBackup.budgets]);
+    if (pendingBackup.entryCategories) changes.push([entryCategoriesKey, pendingBackup.entryCategories]);
     if (pendingBackup.budgetNames) changes.push([budgetNamesKey, pendingBackup.budgetNames]);
     if (pendingBackup.partnerTotals) changes.push([partnerTotalsKey, pendingBackup.partnerTotals]);
     const previous = [];
