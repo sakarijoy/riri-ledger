@@ -73,15 +73,15 @@ h1, h2, p { margin: 0; }
 .month-picker { position: relative; gap: 7px; color: #325761; padding: 7px 2px; white-space: nowrap; font-size: 13px; font-weight: 650; }
 .month-picker input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .month-picker input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; cursor: pointer; }
-#overview .page-header { overflow: hidden; }
-#overview :is(.page-header, .page-content) { scrollbar-gutter: stable; }
-#overview .month-switch { min-width: 0; }
-#overview .month-switch button { flex: none; }
-#overview .month-picker { flex: 1; min-width: 0; justify-content: center; }
+:is(#overview, #combined) .page-header { overflow: hidden; }
+:is(#overview, #combined) :is(.page-header, .page-content) { scrollbar-gutter: stable; }
+:is(#overview, #combined) .month-switch { min-width: 0; }
+:is(#overview, #combined) .month-switch button { flex: none; }
+:is(#overview, #combined) .month-picker { flex: 1; min-width: 0; justify-content: center; }
 .primary { display: inline-flex; justify-content: center; align-items: center; gap: 7px; background: var(--accent); color: #fff; border: 0; border-radius: 10px; min-height: 43px; font-weight: 680; padding: 0 16px; font-size: 14px; white-space: nowrap; }
 .primary:hover { background: #095c61; }
 .primary svg { width: 17px; height: 17px; }
-.summary, #overview .header-actions { display: grid; grid-template-columns: minmax(0, 1.08fr) repeat(2, minmax(0, 1fr)); gap: 17px; }
+.summary, :is(#overview, #combined) .header-actions { display: grid; grid-template-columns: minmax(0, 1.08fr) repeat(2, minmax(0, 1fr)); gap: 17px; }
 .summary { margin-bottom: 22px; }
 .metric, .panel { border: 1px solid var(--line); background: #fff; border-radius: 18px; box-shadow: 0 2px 3px #163b4208; min-width: 0; }
 .metric { padding: 17px 21px 22px; }
@@ -387,10 +387,10 @@ dialog::backdrop { background: #102f3b70; }
   .nav#open-backup { min-height: 44px; }
   .nav#open-backup svg, .nav#export svg { display: none; }
   .nav#open-backup, .nav#export { font-size: .75rem; padding-inline: 5px; }
-  #overview :is(.page-header, .page-content) { scrollbar-gutter: auto; }
-  .summary, #overview .header-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  :is(#overview, #combined) :is(.page-header, .page-content) { scrollbar-gutter: auto; }
+  .summary, :is(#overview, #combined) .header-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
   .summary { margin-bottom: 14px; }
-  #overview .month-switch { grid-column: 1 / -1; }
+  :is(#overview, #combined) .month-switch { grid-column: 1 / -1; }
   .metric.balance { grid-column: 1 / -1; }
   .asset-summary .balance { grid-column: auto; }
   .metric { padding: 11px 12px 13px; }
@@ -428,7 +428,7 @@ dialog::backdrop { background: #102f3b70; }
 }
 
 </style>
-  <meta name="ledger-version" content="f7c52c222558bd61">
+  <meta name="ledger-version" content="3f880b9da4209e62">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
