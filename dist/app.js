@@ -61,6 +61,7 @@ const today = new Intl.DateTimeFormat("sv-SE", {
 }).format();
 let month = today.slice(0, 7);
 let filter = "all";
+let quickEntryType = "expense";
 let editingId = null;
 let noticeTimer;
 let entryPoint = null;
@@ -119,6 +120,7 @@ window.addEventListener("storage", (event) => {
     render();
   }
   if (event.key === budgetKey || event.key === partnerTotalsKey) render();
+  if (event.key === entryCategoriesKey || event.key === null) renderQuickCategories();
 });
 
 function save(next) {
@@ -191,7 +193,7 @@ function renderEntries(entries) {
       row.classList.add("sample");
       row.querySelector(".edit-icon").style.visibility = "hidden";
     } else {
-      row.addEventListener("click", () => openEditor(entry));
+      row.addEventListener("click", () => openEditor({ entry }));
     }
     list.append(row);
   }
@@ -440,6 +442,19 @@ function currentEntryCategory() {
   return form.querySelector('input[name="category"]:checked')?.value;
 }
 
+function renderQuickCategories() {
+  const names = readEntryCategories()[quickEntryType];
+  const buttons = names.map((category) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = category;
+    button.setAttribute("aria-haspopup", "dialog");
+    button.addEventListener("click", () => openEditor({ type: quickEntryType, category }));
+    return button;
+  });
+  $("quick-entry-categories").replaceChildren(...buttons);
+}
+
 function updateCategories(selected) {
   const type = fields.type.value;
   const names = readEntryCategories()[type];
@@ -464,24 +479,26 @@ function updateCategories(selected) {
     return label;
   });
   $("entry-category-options").replaceChildren(...options);
+  $("editor-title").textContent = editingId ? "编辑记录" : (type === "income" ? "记收入" : "记支出") + " · " + current;
 }
 
-function openEditor(entry) {
+function openEditor({ entry, type = entry?.type, category = entry?.category }) {
   form.reset();
   photoRequest += 1;
   setPhotoProcessing(false);
   $("photo-status").textContent = "";
   resetPhoto(entry?.photo ?? "");
   editingId = entry?.id ?? null;
-  fields.type.value = entry?.type ?? "expense";
+  fields.type.value = type;
   entryAmount.reset(entry?.amount);
   fields.date.value = entry?.date ?? (month === today.slice(0, 7) ? today : month + "-01");
   syncDateDisplay(fields.date);
   fields.location.value = entry?.location ?? "";
   entryPoint = entry?.locationPoint ?? parseCoordinates(fields.location.value);
   fields.note.value = entry?.note ?? "";
-  updateCategories(entry?.category);
-  $("editor-title").textContent = entry ? "编辑记录" : "记一笔";
+  updateCategories(category);
+  $("entry-type-field").hidden = !entry;
+  $("entry-category-field").hidden = !entry;
   $("delete").hidden = !entry;
   $("form-error").textContent = "";
   editor.showModal();
@@ -889,7 +906,7 @@ $("delete").addEventListener("click", () => {
   }
   editor.close();
   render();
-  $("add").focus();
+  $("quick-entry-categories").firstElementChild?.focus();
   announce("已删除记录");
 });
 
@@ -918,7 +935,14 @@ $("export").addEventListener("click", () => {
   announce("已导出本月账单");
 });
 
-$("add").addEventListener("click", () => openEditor());
+const quickEntryTabs = document.querySelectorAll("[data-quick-entry-type]");
+quickEntryTabs.forEach((button) => {
+  button.addEventListener("click", () => {
+    quickEntryType = button.dataset.quickEntryType;
+    quickEntryTabs.forEach((tab) => tab.setAttribute("aria-pressed", String(tab === button)));
+    renderQuickCategories();
+  });
+});
 $("ledger-search").addEventListener("input", () => renderEntries(monthRecords()));
 $("close-editor").addEventListener("click", () => editor.close());
 
@@ -936,7 +960,7 @@ function setCategoryRename(name = null) {
 }
 
 function renderCategoryManager() {
-  const names = readEntryCategories()[fields.type.value];
+  const names = readEntryCategories()[quickEntryType];
   const items = names.map((name) => {
     const row = document.createElement("li");
     const label = document.createElement("span");
@@ -960,13 +984,13 @@ function renderCategoryManager() {
     remove.disabled = names.length === 1;
     remove.addEventListener("click", () => {
       const next = readEntryCategories();
-      const type = fields.type.value;
+      const type = quickEntryType;
       if (next[type].length <= 1) {
         categoryStatus.textContent = "每种收支类型至少要保留一个分类。";
         return;
       }
       next[type] = next[type].filter((item) => item !== name);
-      if (saveEntryCategories(next, currentEntryCategory(), "已删除分类")) categoryName.focus();
+      if (saveEntryCategories(next, "已删除分类")) categoryName.focus();
     });
     row.append(label, edit, remove);
     return row;
@@ -974,14 +998,14 @@ function renderCategoryManager() {
   $("entry-category-list").replaceChildren(...items);
 }
 
-function saveEntryCategories(next, selected, message) {
+function saveEntryCategories(next, message) {
   try {
     localStorage.setItem(entryCategoriesKey, JSON.stringify(next));
   } catch {
     categoryStatus.textContent = "无法保存分类，请检查浏览器存储。";
     return false;
   }
-  updateCategories(selected);
+  renderQuickCategories();
   setCategoryRename();
   renderCategoryManager();
   categoryStatus.textContent = message;
@@ -989,8 +1013,7 @@ function saveEntryCategories(next, selected, message) {
 }
 
 $("manage-entry-categories").addEventListener("click", () => {
-  closeAmountKeypad();
-  $("entry-categories-title").textContent = fields.type.value === "income" ? "管理收入分类" : "管理支出分类";
+  $("entry-categories-title").textContent = quickEntryType === "income" ? "管理收入分类" : "管理支出分类";
   categoryStatus.textContent = "";
   setCategoryRename();
   renderCategoryManager();
@@ -1010,15 +1033,14 @@ categoryForm.addEventListener("submit", (event) => {
     return;
   }
   const next = readEntryCategories();
-  const names = next[fields.type.value];
+  const names = next[quickEntryType];
   if (names.includes(name) && name !== renamingCategory) {
     categoryStatus.textContent = "已有同名分类。";
     return;
   }
-  const previous = currentEntryCategory();
   if (renamingCategory === null) {
     names.push(name);
-    saveEntryCategories(next, editingId ? previous : name, "已添加分类");
+    saveEntryCategories(next, "已添加分类");
   } else {
     const index = names.indexOf(renamingCategory);
     if (index === -1) {
@@ -1028,8 +1050,7 @@ categoryForm.addEventListener("submit", (event) => {
       return;
     }
     names[index] = name;
-    const selected = !editingId && previous === renamingCategory ? name : previous;
-    saveEntryCategories(next, selected, "已保存分类名称");
+    saveEntryCategories(next, "已保存分类名称");
   }
 });
 
@@ -1051,9 +1072,10 @@ $("clear-demo").addEventListener("click", () => {
     return;
   }
   render();
-  $("add").focus();
+  $("quick-entry-categories").firstElementChild?.focus();
 });
 
+renderQuickCategories();
 render();
 
 function enablePageUpdates() {

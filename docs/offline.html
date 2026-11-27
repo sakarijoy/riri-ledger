@@ -278,7 +278,16 @@ dialog::backdrop { background: #102f3b70; }
 }
 .field { display: grid; gap: 6px; margin-bottom: 13px; min-width: 0; font-size: 13px; font-weight: 650; }
 .entry-category-field { margin-bottom: 13px; }
-.entry-category-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: .875rem; font-weight: 650; }
+.entry-category-heading { display: block; margin-bottom: 6px; font-size: .875rem; font-weight: 650; }
+#editor-title { min-width: 0; overflow-wrap: anywhere; }
+#close-editor { flex: none; }
+.quick-entry { margin-bottom: 14px; }
+.quick-entry-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.quick-entry-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 8px; }
+.quick-entry-types button { min-height: 44px; }
+#quick-entry-categories { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 84px), 1fr)); gap: 6px; }
+#quick-entry-categories button { min-width: 0; min-height: 44px; padding: 5px 6px; border: 1px solid var(--line); border-radius: 8px; background: #f2f8f8; font-size: .875rem; font-weight: 650; overflow-wrap: anywhere; }
+#quick-entry-categories button:hover { background: #d8eeed; border-color: #9eced0; color: var(--accent); }
 #entry-category-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 #entry-category-options label { position: relative; display: grid; min-width: 0; cursor: pointer; }
 #entry-category-options input { width: 1px; height: 1px; margin: 0; padding: 0; border: 0; }
@@ -450,10 +459,20 @@ dialog::backdrop { background: #102f3b70; }
             <label class="month-picker"><svg><use href="#calendar"/></svg><span id="month-label" data-month-label></span><input id="month" data-month-input type="month" min="0001-01" max="9999-12" aria-label="选择月份"></label>
             <button type="button" id="next" data-month-step="1" aria-label="下一个月"><svg><use href="#right"/></svg></button>
           </div>
-          <button class="primary" id="add" type="button"><svg><use href="#plus"/></svg>记一笔</button>
         </div>
       </header>
       <div class="page-content">
+        <section class="panel quick-entry" aria-labelledby="quick-entry-title">
+          <div class="quick-entry-heading">
+            <h2 id="quick-entry-title">快速记账</h2>
+            <button type="button" id="manage-entry-categories" class="attachment-action">管理分类</button>
+          </div>
+          <div class="filters quick-entry-types" role="group" aria-label="记账类型">
+            <button type="button" data-quick-entry-type="expense" aria-pressed="true">支出</button>
+            <button type="button" data-quick-entry-type="income" aria-pressed="false">收入</button>
+          </div>
+          <div id="quick-entry-categories" role="group" aria-label="记账分类"></div>
+        </section>
         <div class="summary" aria-label="本月收支" aria-live="polite">
           <article class="metric balance">
             <div class="metric-top"><span>本月结余</span><span class="metric-icon"><svg><use href="#wallet"/></svg></span></div>
@@ -645,13 +664,10 @@ dialog::backdrop { background: #102f3b70; }
     <form id="entry-form" autocomplete="off">
       <header class="dialog-header"><h2 id="editor-title">记一笔</h2><button type="button" id="close-editor" class="icon-button" aria-label="关闭" autofocus><svg><use href="#close"/></svg></button></header>
       <div id="entry-editor-body" class="record-editor-body">
-        <fieldset class="type"><legend class="sr-only">收支类型</legend><label><input type="radio" name="type" value="expense" checked>支出</label><label><input type="radio" name="type" value="income">收入</label></fieldset>
+        <fieldset id="entry-type-field" class="type"><legend class="sr-only">收支类型</legend><label><input type="radio" name="type" value="expense" checked>支出</label><label><input type="radio" name="type" value="income">收入</label></fieldset>
         <div id="entry-amount-field"></div>
-        <div class="entry-category-field">
-          <div class="entry-category-heading">
-            <span id="entry-category-label">分类</span>
-            <button type="button" id="manage-entry-categories" class="attachment-action">管理分类</button>
-          </div>
+        <div id="entry-category-field" class="entry-category-field">
+          <span id="entry-category-label" class="entry-category-heading">分类</span>
           <div id="entry-category-options" role="group" aria-labelledby="entry-category-label"></div>
         </div>
         <label class="field">日期<span class="date-control"><span class="date-display" aria-hidden="true"><span class="date-value">选择日期</span><svg><use href="#calendar"/></svg></span><input name="date" type="date" min="0001-01-01" max="9999-12-31" required></span></label>
@@ -804,6 +820,7 @@ const today = new Intl.DateTimeFormat("sv-SE", {
 }).format();
 let month = today.slice(0, 7);
 let filter = "all";
+let quickEntryType = "expense";
 let editingId = null;
 let noticeTimer;
 let entryPoint = null;
@@ -862,6 +879,7 @@ window.addEventListener("storage", (event) => {
     render();
   }
   if (event.key === budgetKey || event.key === partnerTotalsKey) render();
+  if (event.key === entryCategoriesKey || event.key === null) renderQuickCategories();
 });
 
 function save(next) {
@@ -934,7 +952,7 @@ function renderEntries(entries) {
       row.classList.add("sample");
       row.querySelector(".edit-icon").style.visibility = "hidden";
     } else {
-      row.addEventListener("click", () => openEditor(entry));
+      row.addEventListener("click", () => openEditor({ entry }));
     }
     list.append(row);
   }
@@ -1183,6 +1201,19 @@ function currentEntryCategory() {
   return form.querySelector('input[name="category"]:checked')?.value;
 }
 
+function renderQuickCategories() {
+  const names = readEntryCategories()[quickEntryType];
+  const buttons = names.map((category) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = category;
+    button.setAttribute("aria-haspopup", "dialog");
+    button.addEventListener("click", () => openEditor({ type: quickEntryType, category }));
+    return button;
+  });
+  $("quick-entry-categories").replaceChildren(...buttons);
+}
+
 function updateCategories(selected) {
   const type = fields.type.value;
   const names = readEntryCategories()[type];
@@ -1207,24 +1238,26 @@ function updateCategories(selected) {
     return label;
   });
   $("entry-category-options").replaceChildren(...options);
+  $("editor-title").textContent = editingId ? "编辑记录" : (type === "income" ? "记收入" : "记支出") + " · " + current;
 }
 
-function openEditor(entry) {
+function openEditor({ entry, type = entry?.type, category = entry?.category }) {
   form.reset();
   photoRequest += 1;
   setPhotoProcessing(false);
   $("photo-status").textContent = "";
   resetPhoto(entry?.photo ?? "");
   editingId = entry?.id ?? null;
-  fields.type.value = entry?.type ?? "expense";
+  fields.type.value = type;
   entryAmount.reset(entry?.amount);
   fields.date.value = entry?.date ?? (month === today.slice(0, 7) ? today : month + "-01");
   syncDateDisplay(fields.date);
   fields.location.value = entry?.location ?? "";
   entryPoint = entry?.locationPoint ?? parseCoordinates(fields.location.value);
   fields.note.value = entry?.note ?? "";
-  updateCategories(entry?.category);
-  $("editor-title").textContent = entry ? "编辑记录" : "记一笔";
+  updateCategories(category);
+  $("entry-type-field").hidden = !entry;
+  $("entry-category-field").hidden = !entry;
   $("delete").hidden = !entry;
   $("form-error").textContent = "";
   editor.showModal();
@@ -1632,7 +1665,7 @@ $("delete").addEventListener("click", () => {
   }
   editor.close();
   render();
-  $("add").focus();
+  $("quick-entry-categories").firstElementChild?.focus();
   announce("已删除记录");
 });
 
@@ -1661,7 +1694,14 @@ $("export").addEventListener("click", () => {
   announce("已导出本月账单");
 });
 
-$("add").addEventListener("click", () => openEditor());
+const quickEntryTabs = document.querySelectorAll("[data-quick-entry-type]");
+quickEntryTabs.forEach((button) => {
+  button.addEventListener("click", () => {
+    quickEntryType = button.dataset.quickEntryType;
+    quickEntryTabs.forEach((tab) => tab.setAttribute("aria-pressed", String(tab === button)));
+    renderQuickCategories();
+  });
+});
 $("ledger-search").addEventListener("input", () => renderEntries(monthRecords()));
 $("close-editor").addEventListener("click", () => editor.close());
 
@@ -1679,7 +1719,7 @@ function setCategoryRename(name = null) {
 }
 
 function renderCategoryManager() {
-  const names = readEntryCategories()[fields.type.value];
+  const names = readEntryCategories()[quickEntryType];
   const items = names.map((name) => {
     const row = document.createElement("li");
     const label = document.createElement("span");
@@ -1703,13 +1743,13 @@ function renderCategoryManager() {
     remove.disabled = names.length === 1;
     remove.addEventListener("click", () => {
       const next = readEntryCategories();
-      const type = fields.type.value;
+      const type = quickEntryType;
       if (next[type].length <= 1) {
         categoryStatus.textContent = "每种收支类型至少要保留一个分类。";
         return;
       }
       next[type] = next[type].filter((item) => item !== name);
-      if (saveEntryCategories(next, currentEntryCategory(), "已删除分类")) categoryName.focus();
+      if (saveEntryCategories(next, "已删除分类")) categoryName.focus();
     });
     row.append(label, edit, remove);
     return row;
@@ -1717,14 +1757,14 @@ function renderCategoryManager() {
   $("entry-category-list").replaceChildren(...items);
 }
 
-function saveEntryCategories(next, selected, message) {
+function saveEntryCategories(next, message) {
   try {
     localStorage.setItem(entryCategoriesKey, JSON.stringify(next));
   } catch {
     categoryStatus.textContent = "无法保存分类，请检查浏览器存储。";
     return false;
   }
-  updateCategories(selected);
+  renderQuickCategories();
   setCategoryRename();
   renderCategoryManager();
   categoryStatus.textContent = message;
@@ -1732,8 +1772,7 @@ function saveEntryCategories(next, selected, message) {
 }
 
 $("manage-entry-categories").addEventListener("click", () => {
-  closeAmountKeypad();
-  $("entry-categories-title").textContent = fields.type.value === "income" ? "管理收入分类" : "管理支出分类";
+  $("entry-categories-title").textContent = quickEntryType === "income" ? "管理收入分类" : "管理支出分类";
   categoryStatus.textContent = "";
   setCategoryRename();
   renderCategoryManager();
@@ -1753,15 +1792,14 @@ categoryForm.addEventListener("submit", (event) => {
     return;
   }
   const next = readEntryCategories();
-  const names = next[fields.type.value];
+  const names = next[quickEntryType];
   if (names.includes(name) && name !== renamingCategory) {
     categoryStatus.textContent = "已有同名分类。";
     return;
   }
-  const previous = currentEntryCategory();
   if (renamingCategory === null) {
     names.push(name);
-    saveEntryCategories(next, editingId ? previous : name, "已添加分类");
+    saveEntryCategories(next, "已添加分类");
   } else {
     const index = names.indexOf(renamingCategory);
     if (index === -1) {
@@ -1771,8 +1809,7 @@ categoryForm.addEventListener("submit", (event) => {
       return;
     }
     names[index] = name;
-    const selected = !editingId && previous === renamingCategory ? name : previous;
-    saveEntryCategories(next, selected, "已保存分类名称");
+    saveEntryCategories(next, "已保存分类名称");
   }
 });
 
@@ -1794,9 +1831,10 @@ $("clear-demo").addEventListener("click", () => {
     return;
   }
   render();
-  $("add").focus();
+  $("quick-entry-categories").firstElementChild?.focus();
 });
 
+renderQuickCategories();
 render();
 
 function enablePageUpdates() {
@@ -2588,6 +2626,7 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
     restoreButton.hidden = true;
     $("ledger-search").value = "";
     filter = "all";
+    renderQuickCategories();
     render();
     route();
     document.dispatchEvent(new Event("ledgerchange"));

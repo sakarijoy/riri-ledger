@@ -716,6 +716,7 @@
     restoreButton.hidden = true;
     $("ledger-search").value = "";
     filter = "all";
+    renderQuickCategories();
     render();
     route();
     document.dispatchEvent(new Event("ledgerchange"));
