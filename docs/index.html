@@ -281,13 +281,19 @@ dialog::backdrop { background: #102f3b70; }
 .entry-category-heading { display: block; margin-bottom: 6px; font-size: .875rem; font-weight: 650; }
 #editor-title { min-width: 0; overflow-wrap: anywhere; }
 #close-editor { flex: none; }
-.quick-entry { margin-bottom: 14px; }
-.quick-entry-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.quick-entry-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 8px; }
+.panel.quick-entry { margin-bottom: 16px; padding-block: 12px; }
+.quick-entry-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 8px; }
+.quick-entry-heading h2 { margin-inline-end: auto; white-space: nowrap; }
+.quick-entry-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 2px; }
 .quick-entry-types button { min-height: 44px; }
-#quick-entry-categories { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 84px), 1fr)); gap: 6px; }
-#quick-entry-categories button { min-width: 0; min-height: 44px; padding: 5px 6px; border: 1px solid var(--line); border-radius: 8px; background: #f2f8f8; font-size: .875rem; font-weight: 650; overflow-wrap: anywhere; }
-#quick-entry-categories button:hover { background: #d8eeed; border-color: #9eced0; color: var(--accent); }
+.quick-entry-heading .attachment-action { min-height: 44px; padding-inline: 5px; background: transparent; white-space: nowrap; }
+.quick-entry-heading .attachment-action:hover { background: #edf7f8; }
+#quick-entry-categories { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+#quick-entry-categories button { min-width: 0; min-height: 44px; padding: 5px 6px; border: 0; border-radius: 8px; background: #f3f8f9; font-size: .875rem; font-weight: 600; overflow-wrap: anywhere; }
+#quick-entry-categories button:hover { background: #e4f2f2; color: var(--accent); }
+@media (max-width: 620px) {
+  #quick-entry-categories { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 #entry-category-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 #entry-category-options label { position: relative; display: grid; min-width: 0; cursor: pointer; }
 #entry-category-options input { width: 1px; height: 1px; margin: 0; padding: 0; border: 0; }
@@ -413,7 +419,7 @@ dialog::backdrop { background: #102f3b70; }
 }
 
 </style>
-  <meta name="ledger-version" content="3274c29e83715ffd">
+  <meta name="ledger-version" content="8873a412548a2ade">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
@@ -466,17 +472,6 @@ dialog::backdrop { background: #102f3b70; }
         </div>
       </header>
       <div class="page-content">
-        <section class="panel quick-entry" aria-labelledby="quick-entry-title">
-          <div class="quick-entry-heading">
-            <h2 id="quick-entry-title">快速记账</h2>
-            <button type="button" id="manage-entry-categories" class="attachment-action">管理分类</button>
-          </div>
-          <div class="filters quick-entry-types" role="group" aria-label="记账类型">
-            <button type="button" data-quick-entry-type="expense" aria-pressed="true">支出</button>
-            <button type="button" data-quick-entry-type="income" aria-pressed="false">收入</button>
-          </div>
-          <div id="quick-entry-categories" role="group" aria-label="记账分类"></div>
-        </section>
         <div class="summary" aria-label="本月收支" aria-live="polite">
           <article class="metric balance">
             <div class="metric-top"><span>本月结余</span><span class="metric-icon"><svg><use href="#wallet"/></svg></span></div>
@@ -491,6 +486,17 @@ dialog::backdrop { background: #102f3b70; }
             <strong id="expense">¥0.00</strong><small id="expense-count"></small>
           </button>
         </div>
+        <section class="panel quick-entry" aria-labelledby="quick-entry-title">
+          <div class="quick-entry-heading">
+            <h2 id="quick-entry-title">快速记账</h2>
+            <div class="filters quick-entry-types" role="group" aria-label="记账类型">
+              <button type="button" data-quick-entry-type="expense" aria-pressed="true">支出</button>
+              <button type="button" data-quick-entry-type="income" aria-pressed="false">收入</button>
+            </div>
+            <button type="button" id="manage-entry-categories" class="attachment-action">管理分类</button>
+          </div>
+          <div id="quick-entry-categories" role="group" aria-label="记账分类"></div>
+        </section>
         <section class="panel monthly-limit" aria-labelledby="monthly-limit-title">
           <div><h2 id="monthly-limit-title">本月支出额度</h2><p id="monthly-limit-value" aria-live="polite">未设置</p></div>
           <button id="edit-budget" class="secondary" type="button">设置额度</button>

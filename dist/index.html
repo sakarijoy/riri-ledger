@@ -60,17 +60,6 @@
         </div>
       </header>
       <div class="page-content">
-        <section class="panel quick-entry" aria-labelledby="quick-entry-title">
-          <div class="quick-entry-heading">
-            <h2 id="quick-entry-title">快速记账</h2>
-            <button type="button" id="manage-entry-categories" class="attachment-action">管理分类</button>
-          </div>
-          <div class="filters quick-entry-types" role="group" aria-label="记账类型">
-            <button type="button" data-quick-entry-type="expense" aria-pressed="true">支出</button>
-            <button type="button" data-quick-entry-type="income" aria-pressed="false">收入</button>
-          </div>
-          <div id="quick-entry-categories" role="group" aria-label="记账分类"></div>
-        </section>
         <div class="summary" aria-label="本月收支" aria-live="polite">
           <article class="metric balance">
             <div class="metric-top"><span>本月结余</span><span class="metric-icon"><svg><use href="#wallet"/></svg></span></div>
@@ -85,6 +74,17 @@
             <strong id="expense">¥0.00</strong><small id="expense-count"></small>
           </button>
         </div>
+        <section class="panel quick-entry" aria-labelledby="quick-entry-title">
+          <div class="quick-entry-heading">
+            <h2 id="quick-entry-title">快速记账</h2>
+            <div class="filters quick-entry-types" role="group" aria-label="记账类型">
+              <button type="button" data-quick-entry-type="expense" aria-pressed="true">支出</button>
+              <button type="button" data-quick-entry-type="income" aria-pressed="false">收入</button>
+            </div>
+            <button type="button" id="manage-entry-categories" class="attachment-action">管理分类</button>
+          </div>
+          <div id="quick-entry-categories" role="group" aria-label="记账分类"></div>
+        </section>
         <section class="panel monthly-limit" aria-labelledby="monthly-limit-title">
           <div><h2 id="monthly-limit-title">本月支出额度</h2><p id="monthly-limit-value" aria-live="polite">未设置</p></div>
           <button id="edit-budget" class="secondary" type="button">设置额度</button>
