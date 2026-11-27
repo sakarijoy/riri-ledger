@@ -111,6 +111,7 @@ function load() {
 
 let records = load();
 let githubPartnerTotals = null;
+let githubSummaryStatus = "";
 let combinedAccess = false;
 window.addEventListener("storage", (event) => {
   if (event.key === storageKey || event.key === null) {
@@ -294,7 +295,8 @@ function renderCombined() {
     $("combined-" + type + "-change").textContent = change === null ? ""
       : change === 0 ? "较上月持平" : "较上月 " + (change > 0 ? "+" : "") + money(change);
   }
-  $("combined-status").textContent = current ? "" : message;
+  $("combined-status").textContent = current ? githubSummaryStatus
+    : [message, githubSummaryStatus].filter(Boolean).join(" ");
   renderCombinedTrend(Array.from(history).filter(([, totals]) => totals).reverse());
 }
 

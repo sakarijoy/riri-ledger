@@ -404,7 +404,7 @@ dialog::backdrop { background: #102f3b70; }
 }
 
 </style>
-  <meta name="ledger-version" content="0e742f66c81e777a">
+  <meta name="ledger-version" content="dfc303aa6ab7f6e5">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
@@ -858,6 +858,7 @@ function load() {
 
 let records = load();
 let githubPartnerTotals = null;
+let githubSummaryStatus = "";
 let combinedAccess = false;
 window.addEventListener("storage", (event) => {
   if (event.key === storageKey || event.key === null) {
@@ -1041,7 +1042,8 @@ function renderCombined() {
     $("combined-" + type + "-change").textContent = change === null ? ""
       : change === 0 ? "较上月持平" : "较上月 " + (change > 0 ? "+" : "") + money(change);
   }
-  $("combined-status").textContent = current ? "" : message;
+  $("combined-status").textContent = current ? githubSummaryStatus
+    : [message, githubSummaryStatus].filter(Boolean).join(" ");
   renderCombinedTrend(Array.from(history).filter(([, totals]) => totals).reverse());
 }
 
@@ -2625,7 +2627,10 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
   }
 
   function loadCache(settings) {
-    return (settings && storageValue(localStorage, cacheKey(settings))) ?? { sent: {}, partner: null };
+    return {
+      sent: {}, partner: null, verified: false, syncedAt: null,
+      ...(settings && storageValue(localStorage, cacheKey(settings))),
+    };
   }
 
   let settings = storageValue(localStorage, settingsKey);
@@ -2635,9 +2640,11 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
   let queued = false;
   let setupVersion = 0;
 
-  function connectionStatus(message) {
+  function connectionStatus(message, summary = message) {
     $("github-sync-status").textContent = message;
     $("sync-github-now").hidden = !settings || !token;
+    githubSummaryStatus = summary;
+    if (!$("combined").hidden) renderCombined();
   }
 
   function showCachedTotals() {
@@ -2664,8 +2671,21 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
 
   function configureStatus() {
     if (!settings) connectionStatus("尚未连接私有汇总仓库。");
+    else if (!navigator.onLine) connectionStatus(offlineStatus());
     else if (!token) connectionStatus("请打开连接设置，重新输入令牌以继续同步。");
-    else connectionStatus("已连接 " + settings.repository);
+    else connectionStatus("已连接 " + settings.repository, lastSyncStatus());
+  }
+
+  function lastSyncStatus() {
+    return cache.syncedAt
+      ? "上次同步 " + new Date(cache.syncedAt).toLocaleString("zh-CN", { hour12: false }) + "。"
+      : "";
+  }
+
+  function offlineStatus() {
+    const dataStatus = cache.partner === null ? "当前离线。" : "当前离线，显示本机记录和上次同步的对方汇总。";
+    const next = token ? "联网后会继续同步。" : "联网后可在连接设置中重新输入令牌。";
+    return [dataStatus, lastSyncStatus(), next].filter(Boolean).join(" ");
   }
 
   async function request(path, credential, body) {
@@ -2686,6 +2706,10 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
         redirect: "error",
         signal: abort.signal,
       });
+      if (response.status >= 500 || response.status === 429 ||
+        (response.status === 403 && (response.headers.has("Retry-After") || response.headers.get("X-RateLimit-Remaining") === "0"))) {
+        throw Error("GitHub 暂时无法响应，稍后会重试。");
+      }
       return { status: response.status, data: response.ok ? await response.json() : null };
     } finally {
       clearTimeout(timeout);
@@ -2796,10 +2820,22 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
     localStorage.setItem(cacheKey(connection), JSON.stringify(cache));
   }
 
+  function rememberAccess(connection, verified) {
+    if (cache.verified === verified) return;
+    cache.verified = verified;
+    if (!verified) {
+      cache.partner = null;
+      cache.syncedAt = null;
+    }
+    // Apply access immediately, even if the browser cannot write the cache.
+    setAccess(verified);
+    persistCache(connection);
+  }
+
   async function sync() {
     if (!settings || !token) return;
     if (!navigator.onLine) {
-      connectionStatus("当前离线，联网后会继续同步。");
+      connectionStatus(offlineStatus());
       return;
     }
     if (running) {
@@ -2814,7 +2850,7 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
     try {
       await verifyConnection(connection, credential);
       if (!stillConnected()) return;
-      setAccess(true);
+      rememberAccess(connection, true);
       const local = localMonths();
       if (!validMonths(local)) throw Error("本机有月份金额超出同步范围。");
       const periods = new Set([...Object.keys(local), ...Object.keys(cache.sent)]);
@@ -2830,15 +2866,20 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
       const partner = await readSummary(connection, connection.partner, credential);
       if (!stillConnected()) return;
       cache.partner = partner.months;
+      cache.syncedAt = Date.now();
       persistCache(connection);
       showCachedTotals();
-      connectionStatus("最近同步 " + new Date().toLocaleTimeString("zh-CN", { hour12: false }));
+      connectionStatus(lastSyncStatus());
     } catch (failure) {
       if (stillConnected()) {
-        if (failure.accessDenied) setAccess(false);
-        connectionStatus(failure instanceof TypeError || failure.name === "AbortError"
+        if (failure.accessDenied) {
+          try { rememberAccess(connection, false); }
+          catch { /* The view was already hidden before the cache write. */ }
+        }
+        const message = failure instanceof TypeError || failure.name === "AbortError"
           ? "无法连接 GitHub，稍后会重试。"
-          : failure.message || "同步失败，请稍后重试。");
+          : failure.message || "同步失败，请稍后重试。";
+        connectionStatus(!navigator.onLine ? offlineStatus() : [message, lastSyncStatus()].filter(Boolean).join(" "));
       }
     } finally {
       running = false;
@@ -2899,6 +2940,7 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
       settings = next;
       token = credential;
       cache = loadCache(settings);
+      rememberAccess(settings, true);
       setAccess(true);
       showCachedTotals();
       dialog.close();
@@ -2913,6 +2955,7 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
   });
   $("disconnect-github-sync").addEventListener("click", () => {
     try {
+      if (settings) localStorage.removeItem(cacheKey(settings));
       localStorage.removeItem(settingsKey);
       sessionStorage.removeItem(sessionKey);
     } catch {
@@ -2932,7 +2975,7 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
   document.addEventListener("combinedpageopen", sync);
   window.addEventListener("online", sync);
   window.addEventListener("offline", () => {
-    if (settings && token) connectionStatus("当前离线，联网后会继续同步。");
+    if (settings) connectionStatus(offlineStatus());
   });
   window.addEventListener("storage", (event) => {
     if (event.key === storageKey) sync();
@@ -2942,9 +2985,15 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
       sessionStorage.removeItem(sessionKey);
       token = settings?.rememberedToken ?? null;
       cache = loadCache(settings);
+      setAccess(cache.verified === true);
       showCachedTotals();
       configureStatus();
       sync();
+    } else if (settings && event.key === cacheKey(settings)) {
+      cache = loadCache(settings);
+      setAccess(cache.verified === true);
+      showCachedTotals();
+      configureStatus();
     }
   });
   document.addEventListener("visibilitychange", () => {
@@ -2954,7 +3003,7 @@ for (const eventName of ["gesturestart", "gesturechange"]) {
     if (!document.hidden) sync();
   }, 60000);
 
-  showCachedTotals();
+  setAccess(cache.verified === true);
   configureStatus();
   sync();
 })();

@@ -23,7 +23,10 @@
   }
 
   function loadCache(settings) {
-    return (settings && storageValue(localStorage, cacheKey(settings))) ?? { sent: {}, partner: null };
+    return {
+      sent: {}, partner: null, verified: false, syncedAt: null,
+      ...(settings && storageValue(localStorage, cacheKey(settings))),
+    };
   }
 
   let settings = storageValue(localStorage, settingsKey);
@@ -33,9 +36,11 @@
   let queued = false;
   let setupVersion = 0;
 
-  function connectionStatus(message) {
+  function connectionStatus(message, summary = message) {
     $("github-sync-status").textContent = message;
     $("sync-github-now").hidden = !settings || !token;
+    githubSummaryStatus = summary;
+    if (!$("combined").hidden) renderCombined();
   }
 
   function showCachedTotals() {
@@ -62,8 +67,21 @@
 
   function configureStatus() {
     if (!settings) connectionStatus("尚未连接私有汇总仓库。");
+    else if (!navigator.onLine) connectionStatus(offlineStatus());
     else if (!token) connectionStatus("请打开连接设置，重新输入令牌以继续同步。");
-    else connectionStatus("已连接 " + settings.repository);
+    else connectionStatus("已连接 " + settings.repository, lastSyncStatus());
+  }
+
+  function lastSyncStatus() {
+    return cache.syncedAt
+      ? "上次同步 " + new Date(cache.syncedAt).toLocaleString("zh-CN", { hour12: false }) + "。"
+      : "";
+  }
+
+  function offlineStatus() {
+    const dataStatus = cache.partner === null ? "当前离线。" : "当前离线，显示本机记录和上次同步的对方汇总。";
+    const next = token ? "联网后会继续同步。" : "联网后可在连接设置中重新输入令牌。";
+    return [dataStatus, lastSyncStatus(), next].filter(Boolean).join(" ");
   }
 
   async function request(path, credential, body) {
@@ -84,6 +102,10 @@
         redirect: "error",
         signal: abort.signal,
       });
+      if (response.status >= 500 || response.status === 429 ||
+        (response.status === 403 && (response.headers.has("Retry-After") || response.headers.get("X-RateLimit-Remaining") === "0"))) {
+        throw Error("GitHub 暂时无法响应，稍后会重试。");
+      }
       return { status: response.status, data: response.ok ? await response.json() : null };
     } finally {
       clearTimeout(timeout);
@@ -194,10 +216,22 @@
     localStorage.setItem(cacheKey(connection), JSON.stringify(cache));
   }
 
+  function rememberAccess(connection, verified) {
+    if (cache.verified === verified) return;
+    cache.verified = verified;
+    if (!verified) {
+      cache.partner = null;
+      cache.syncedAt = null;
+    }
+    // Apply access immediately, even if the browser cannot write the cache.
+    setAccess(verified);
+    persistCache(connection);
+  }
+
   async function sync() {
     if (!settings || !token) return;
     if (!navigator.onLine) {
-      connectionStatus("当前离线，联网后会继续同步。");
+      connectionStatus(offlineStatus());
       return;
     }
     if (running) {
@@ -212,7 +246,7 @@
     try {
       await verifyConnection(connection, credential);
       if (!stillConnected()) return;
-      setAccess(true);
+      rememberAccess(connection, true);
       const local = localMonths();
       if (!validMonths(local)) throw Error("本机有月份金额超出同步范围。");
       const periods = new Set([...Object.keys(local), ...Object.keys(cache.sent)]);
@@ -228,15 +262,20 @@
       const partner = await readSummary(connection, connection.partner, credential);
       if (!stillConnected()) return;
       cache.partner = partner.months;
+      cache.syncedAt = Date.now();
       persistCache(connection);
       showCachedTotals();
-      connectionStatus("最近同步 " + new Date().toLocaleTimeString("zh-CN", { hour12: false }));
+      connectionStatus(lastSyncStatus());
     } catch (failure) {
       if (stillConnected()) {
-        if (failure.accessDenied) setAccess(false);
-        connectionStatus(failure instanceof TypeError || failure.name === "AbortError"
+        if (failure.accessDenied) {
+          try { rememberAccess(connection, false); }
+          catch { /* The view was already hidden before the cache write. */ }
+        }
+        const message = failure instanceof TypeError || failure.name === "AbortError"
           ? "无法连接 GitHub，稍后会重试。"
-          : failure.message || "同步失败，请稍后重试。");
+          : failure.message || "同步失败，请稍后重试。";
+        connectionStatus(!navigator.onLine ? offlineStatus() : [message, lastSyncStatus()].filter(Boolean).join(" "));
       }
     } finally {
       running = false;
@@ -297,6 +336,7 @@
       settings = next;
       token = credential;
       cache = loadCache(settings);
+      rememberAccess(settings, true);
       setAccess(true);
       showCachedTotals();
       dialog.close();
@@ -311,6 +351,7 @@
   });
   $("disconnect-github-sync").addEventListener("click", () => {
     try {
+      if (settings) localStorage.removeItem(cacheKey(settings));
       localStorage.removeItem(settingsKey);
       sessionStorage.removeItem(sessionKey);
     } catch {
@@ -330,7 +371,7 @@
   document.addEventListener("combinedpageopen", sync);
   window.addEventListener("online", sync);
   window.addEventListener("offline", () => {
-    if (settings && token) connectionStatus("当前离线，联网后会继续同步。");
+    if (settings) connectionStatus(offlineStatus());
   });
   window.addEventListener("storage", (event) => {
     if (event.key === storageKey) sync();
@@ -340,9 +381,15 @@
       sessionStorage.removeItem(sessionKey);
       token = settings?.rememberedToken ?? null;
       cache = loadCache(settings);
+      setAccess(cache.verified === true);
       showCachedTotals();
       configureStatus();
       sync();
+    } else if (settings && event.key === cacheKey(settings)) {
+      cache = loadCache(settings);
+      setAccess(cache.verified === true);
+      showCachedTotals();
+      configureStatus();
     }
   });
   document.addEventListener("visibilitychange", () => {
@@ -352,7 +399,7 @@
     if (!document.hidden) sync();
   }, 60000);
 
-  showCachedTotals();
+  setAccess(cache.verified === true);
   configureStatus();
   sync();
 })();
