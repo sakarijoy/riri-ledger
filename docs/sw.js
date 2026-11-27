@@ -1,7 +1,7 @@
 /* The build replaces the version placeholder alongside the HTML version. */
 "use strict";
 
-const version = "8873a412548a2ade";
+const version = "f7c52c222558bd61";
 const cachePrefix = "riri-ledger-standalone-shell-";
 const cacheName = cachePrefix + version;
 const root = new URL(self.registration.scope);
