@@ -268,6 +268,7 @@ dialog::backdrop { background: #102f3b70; }
 #amount-keypad button:hover { background: #d8eeed; }
 #amount-keypad button[aria-pressed="true"] { background: #d8eeed; border-color: #9eced0; color: var(--accent); }
 #amount-keypad #close-amount-keypad { background: var(--accent); color: white; }
+#amount-keypad:has(#close-amount-keypad[hidden]) [data-key="Delete"] { grid-column: span 2; }
 @media (max-height: 420px) {
   .record-editor-body #amount-keypad { gap: 4px; }
   .record-editor-body #amount-keypad button { min-height: 34px; }

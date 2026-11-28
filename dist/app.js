@@ -502,11 +502,16 @@ function openEditor({ entry, type = entry?.type, category = entry?.category }) {
   $("delete").hidden = !entry;
   $("form-error").textContent = "";
   editor.showModal();
+  if (!entry) {
+    entryAmount.open({ reveal: false });
+    entryAmount.button.focus({ preventScroll: true });
+  }
   $("entry-editor-body").scrollTop = 0;
 }
 
 const amountKeypad = $("amount-keypad");
 const keypadSign = amountKeypad.querySelector('[data-key="-"]');
+const keypadDone = $("close-amount-keypad");
 let activeAmount = null;
 
 function closeAmountKeypad() {
@@ -531,7 +536,7 @@ function revealAmountKeypad(field) {
   });
 }
 
-function createAmountField(container, label, maxDigits, placeholder) {
+function createAmountField(container, label, maxDigits, placeholder, { keepOpen = () => false } = {}) {
   container.className = "field money-field";
   const title = document.createElement("span");
   title.textContent = label;
@@ -553,17 +558,18 @@ function createAmountField(container, label, maxDigits, placeholder) {
 
   const field = {
     button,
-    open() {
+    open({ reveal = true } = {}) {
       closeAmountKeypad();
       activeAmount = field;
       container.append(amountKeypad);
+      keypadDone.hidden = keepOpen();
       amountKeypad.hidden = false;
       button.setAttribute("aria-expanded", "true");
       draw();
-      revealAmountKeypad(field);
+      if (reveal) revealAmountKeypad(field);
     },
     reset(cents) {
-      if (activeAmount === field) closeAmountKeypad();
+      if (activeAmount === field && !keepOpen()) closeAmountKeypad();
       draft = cents == null ? "" : (Math.abs(cents) / 100).toFixed(2);
       negative = cents < 0;
       draw();
@@ -590,8 +596,9 @@ function createAmountField(container, label, maxDigits, placeholder) {
     },
   };
   button.addEventListener("click", () => {
-    if (activeAmount === field) closeAmountKeypad();
-    else field.open();
+    if (activeAmount !== field) field.open();
+    else if (keepOpen()) revealAmountKeypad(field);
+    else closeAmountKeypad();
   });
   container.addEventListener("keydown", (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey ||
@@ -608,7 +615,7 @@ amountKeypad.addEventListener("click", (event) => {
   const key = event.target.closest("button[data-key]")?.dataset.key;
   if (key) activeAmount?.edit(key);
 });
-$("close-amount-keypad").addEventListener("click", () => {
+keypadDone.addEventListener("click", () => {
   const button = activeAmount?.button;
   closeAmountKeypad();
   button?.focus();
@@ -617,7 +624,9 @@ document.addEventListener("close", (event) => {
   if (!event.target.open && event.target.contains(amountKeypad)) closeAmountKeypad();
 }, true);
 
-const entryAmount = createAmountField($("entry-amount-field"), "金额（元）", 9, "0.00");
+const entryAmount = createAmountField($("entry-amount-field"), "金额（元）", 9, "0.00", {
+  keepOpen: () => editor.open && editingId === null,
+});
 
 const budgetEditor = $("budget-editor");
 const budgetAmount = createAmountField($("budget-amount-field"), "额度（元）", 10, "未设置");
