@@ -272,7 +272,7 @@ dialog::backdrop { background: #102f3b70; }
 .type input { accent-color: var(--accent); }
 .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
 .amount-display { min-height: 40px; padding: 7px 9px; border: 1px solid #ccdee1; border-radius: 8px; background: white; text-align: left; font-weight: 400; font-variant-numeric: tabular-nums; }
-.amount-display[aria-expanded="true"] { border-color: var(--accent); }
+.amount-display[aria-expanded="true"]:has(+ #amount-keypad #close-amount-keypad:not([hidden])) { border-color: var(--accent); }
 #amount-keypad { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
 #amount-keypad button { min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: #f2f8f8; font-size: 1rem; }
 #amount-keypad button:hover { background: #d8eeed; }
@@ -287,6 +287,7 @@ dialog::backdrop { background: #102f3b70; }
 .entry-category-field { margin-bottom: 13px; }
 .entry-category-heading { display: block; margin-bottom: 6px; font-size: .875rem; font-weight: 650; }
 #editor-title { min-width: 0; overflow-wrap: anywhere; }
+#editor-title:focus { outline: none; }
 #close-editor { flex: none; }
 .panel.quick-entry { margin-bottom: 16px; padding-block: 12px; }
 .quick-entry-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 8px; }
@@ -678,7 +679,7 @@ dialog::backdrop { background: #102f3b70; }
   </dialog>
   <dialog id="editor" class="record-editor" aria-labelledby="editor-title">
     <form id="entry-form" autocomplete="off">
-      <header class="dialog-header"><h2 id="editor-title">记一笔</h2><button type="button" id="close-editor" class="icon-button" aria-label="关闭" autofocus><svg><use href="#close"/></svg></button></header>
+      <header class="dialog-header"><h2 id="editor-title" tabindex="-1">记一笔</h2><button type="button" id="close-editor" class="icon-button" aria-label="关闭" autofocus><svg><use href="#close"/></svg></button></header>
       <div id="entry-editor-body" class="record-editor-body">
         <fieldset id="entry-type-field" class="type"><legend class="sr-only">收支类型</legend><label><input type="radio" name="type" value="expense" checked>支出</label><label><input type="radio" name="type" value="income">收入</label></fieldset>
         <div id="entry-amount-field"></div>
@@ -848,6 +849,7 @@ let photoTurns = 0;
 const form = $("entry-form");
 const fields = form.elements;
 const editor = $("editor");
+const editorTitle = $("editor-title");
 const filters = document.querySelectorAll("[data-filter]");
 const monthInputs = document.querySelectorAll("[data-month-input]");
 const monthLabels = document.querySelectorAll("[data-month-label]");
@@ -1254,7 +1256,7 @@ function updateCategories(selected) {
     return label;
   });
   $("entry-category-options").replaceChildren(...options);
-  $("editor-title").textContent = editingId ? "编辑记录" : (type === "income" ? "记收入" : "记支出") + " · " + current;
+  editorTitle.textContent = editingId ? "编辑记录" : (type === "income" ? "记收入" : "记支出") + " · " + current;
 }
 
 function openEditor({ entry, type = entry?.type, category = entry?.category }) {
@@ -1279,7 +1281,7 @@ function openEditor({ entry, type = entry?.type, category = entry?.category }) {
   editor.showModal();
   if (!entry) {
     entryAmount.open({ reveal: false });
-    entryAmount.button.focus({ preventScroll: true });
+    editorTitle.focus({ preventScroll: true });
   }
   $("entry-editor-body").scrollTop = 0;
 }
@@ -1363,6 +1365,13 @@ function createAmountField(container, label, maxDigits, placeholder, { keepOpen 
       }
       draw();
     },
+    handleKeydown(event) {
+      if (event.ctrlKey || event.metaKey || event.altKey ||
+        !/^(?:[0-9.-]|Backspace|Delete)$/.test(event.key)) return;
+      event.preventDefault();
+      if (activeAmount !== field) field.open();
+      field.edit(event.key);
+    },
     get cents() {
       if (!draft) return null;
       const [yuan, fraction = ""] = draft.split(".");
@@ -1375,13 +1384,7 @@ function createAmountField(container, label, maxDigits, placeholder, { keepOpen 
     else if (keepOpen()) revealAmountKeypad(field);
     else closeAmountKeypad();
   });
-  container.addEventListener("keydown", (event) => {
-    if (event.ctrlKey || event.metaKey || event.altKey ||
-      !/^(?:[0-9.-]|Backspace|Delete)$/.test(event.key)) return;
-    event.preventDefault();
-    if (activeAmount !== field) field.open();
-    field.edit(event.key);
-  });
+  container.addEventListener("keydown", field.handleKeydown);
   field.reset();
   return field;
 }
@@ -1401,6 +1404,9 @@ document.addEventListener("close", (event) => {
 
 const entryAmount = createAmountField($("entry-amount-field"), "金额（元）", 9, "0.00", {
   keepOpen: () => editor.open && editingId === null,
+});
+editorTitle.addEventListener("keydown", (event) => {
+  if (activeAmount === entryAmount) entryAmount.handleKeydown(event);
 });
 
 const budgetEditor = $("budget-editor");

@@ -73,6 +73,7 @@ let photoTurns = 0;
 const form = $("entry-form");
 const fields = form.elements;
 const editor = $("editor");
+const editorTitle = $("editor-title");
 const filters = document.querySelectorAll("[data-filter]");
 const monthInputs = document.querySelectorAll("[data-month-input]");
 const monthLabels = document.querySelectorAll("[data-month-label]");
@@ -479,7 +480,7 @@ function updateCategories(selected) {
     return label;
   });
   $("entry-category-options").replaceChildren(...options);
-  $("editor-title").textContent = editingId ? "编辑记录" : (type === "income" ? "记收入" : "记支出") + " · " + current;
+  editorTitle.textContent = editingId ? "编辑记录" : (type === "income" ? "记收入" : "记支出") + " · " + current;
 }
 
 function openEditor({ entry, type = entry?.type, category = entry?.category }) {
@@ -504,7 +505,7 @@ function openEditor({ entry, type = entry?.type, category = entry?.category }) {
   editor.showModal();
   if (!entry) {
     entryAmount.open({ reveal: false });
-    entryAmount.button.focus({ preventScroll: true });
+    editorTitle.focus({ preventScroll: true });
   }
   $("entry-editor-body").scrollTop = 0;
 }
@@ -588,6 +589,13 @@ function createAmountField(container, label, maxDigits, placeholder, { keepOpen 
       }
       draw();
     },
+    handleKeydown(event) {
+      if (event.ctrlKey || event.metaKey || event.altKey ||
+        !/^(?:[0-9.-]|Backspace|Delete)$/.test(event.key)) return;
+      event.preventDefault();
+      if (activeAmount !== field) field.open();
+      field.edit(event.key);
+    },
     get cents() {
       if (!draft) return null;
       const [yuan, fraction = ""] = draft.split(".");
@@ -600,13 +608,7 @@ function createAmountField(container, label, maxDigits, placeholder, { keepOpen 
     else if (keepOpen()) revealAmountKeypad(field);
     else closeAmountKeypad();
   });
-  container.addEventListener("keydown", (event) => {
-    if (event.ctrlKey || event.metaKey || event.altKey ||
-      !/^(?:[0-9.-]|Backspace|Delete)$/.test(event.key)) return;
-    event.preventDefault();
-    if (activeAmount !== field) field.open();
-    field.edit(event.key);
-  });
+  container.addEventListener("keydown", field.handleKeydown);
   field.reset();
   return field;
 }
@@ -626,6 +628,9 @@ document.addEventListener("close", (event) => {
 
 const entryAmount = createAmountField($("entry-amount-field"), "金额（元）", 9, "0.00", {
   keepOpen: () => editor.open && editingId === null,
+});
+editorTitle.addEventListener("keydown", (event) => {
+  if (activeAmount === entryAmount) entryAmount.handleKeydown(event);
 });
 
 const budgetEditor = $("budget-editor");

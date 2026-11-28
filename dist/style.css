@@ -262,7 +262,7 @@ dialog::backdrop { background: #102f3b70; }
 .type input { accent-color: var(--accent); }
 .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
 .amount-display { min-height: 40px; padding: 7px 9px; border: 1px solid #ccdee1; border-radius: 8px; background: white; text-align: left; font-weight: 400; font-variant-numeric: tabular-nums; }
-.amount-display[aria-expanded="true"] { border-color: var(--accent); }
+.amount-display[aria-expanded="true"]:has(+ #amount-keypad #close-amount-keypad:not([hidden])) { border-color: var(--accent); }
 #amount-keypad { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
 #amount-keypad button { min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: #f2f8f8; font-size: 1rem; }
 #amount-keypad button:hover { background: #d8eeed; }
@@ -277,6 +277,7 @@ dialog::backdrop { background: #102f3b70; }
 .entry-category-field { margin-bottom: 13px; }
 .entry-category-heading { display: block; margin-bottom: 6px; font-size: .875rem; font-weight: 650; }
 #editor-title { min-width: 0; overflow-wrap: anywhere; }
+#editor-title:focus { outline: none; }
 #close-editor { flex: none; }
 .panel.quick-entry { margin-bottom: 16px; padding-block: 12px; }
 .quick-entry-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 8px; }
