@@ -313,9 +313,12 @@ dialog::backdrop { background: #102f3b70; }
 .category-help { margin: 6px 0; color: var(--muted); font-size: .8125rem; }
 #entry-category-status:empty { display: none; }
 #entry-category-list { list-style: none; margin: 10px 0 0; padding: 0; }
-#entry-category-list li { display: grid; grid-template-columns: minmax(0, 1fr) repeat(4, auto); align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid var(--line); }
+#entry-category-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid var(--line); }
 #entry-category-list li span { overflow-wrap: anywhere; }
-#entry-category-list .category-move { width: 44px; min-height: 44px; padding-inline: 0; font-size: 1rem; }
+#entry-category-list .category-drag-handle { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; color: var(--muted); background: #f3f8f9; cursor: grab; touch-action: none; user-select: none; -webkit-touch-callout: none; }
+.category-drag-handle::before { content: ""; width: 10px; height: 15px; background: radial-gradient(circle, currentColor 1.3px, transparent 1.5px) 0 0 / 5px 5px; }
+#entry-category-list .category-dragging { position: relative; z-index: 1; border-radius: 8px; background: #edf7f8; box-shadow: 0 4px 14px #17364029; }
+#entry-category-list .category-dragging .category-drag-handle { color: var(--accent); cursor: grabbing; }
 #entry-category-list .danger { min-height: 44px; }
 .field input, .field select, .field textarea { width: 100%; min-width: 0; height: 40px; padding: 7px 9px; border: 1px solid #ccdee1; border-radius: 8px; background: white; color: inherit; font-weight: 400; }
 .field textarea { resize: none; line-height: 24px; }
@@ -764,6 +767,7 @@ dialog::backdrop { background: #102f3b70; }
     </form>
     <p class="category-help">改名或删除后，已有账单保留原分类。</p>
     <p id="entry-category-status" class="category-help" role="status"></p>
+    <p id="category-sort-help" class="sr-only">拖动调整顺序，或使用键盘的向上、向下方向键移动。</p>
     <ul id="entry-category-list"></ul>
   </dialog>
   <div id="amount-keypad" role="group" aria-label="金额数字键盘" hidden>
@@ -1779,6 +1783,7 @@ const categoryList = $("entry-category-list");
 const categoryName = $("entry-category-name");
 const categoryStatus = $("entry-category-status");
 let renamingCategory = null;
+let categoryDrag = null;
 
 function setCategoryRename(name = null) {
   renamingCategory = name;
@@ -1820,41 +1825,110 @@ function renderCategoryManager() {
       next[type] = next[type].filter((item) => item !== name);
       if (saveEntryCategories(next, "已删除分类")) categoryName.focus();
     });
-    const up = categoryMoveButton(name, -1, index === 0);
-    const down = categoryMoveButton(name, 1, index === names.length - 1);
-    row.append(label, up, down, edit, remove);
+    const handle = categorySortHandle(row, name, index, names.length);
+    row.append(handle, label, edit, remove);
     return row;
   });
   categoryList.replaceChildren(...items);
 }
 
-function categoryMoveButton(name, step, disabled) {
+function categorySortHandle(row, name, index, count) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "secondary category-move";
-  button.textContent = step === -1 ? "↑" : "↓";
-  const label = step === -1 ? "上移" : "下移";
-  button.setAttribute("aria-label", label + "：" + name);
-  button.title = label;
-  button.dataset.categoryMove = String(step);
-  button.disabled = disabled;
-  button.addEventListener("click", () => moveEntryCategory(name, step));
+  button.className = "category-drag-handle";
+  button.setAttribute("aria-label", "调整顺序：" + name);
+  button.setAttribute("aria-describedby", "category-sort-help");
+  button.title = "拖动排序";
+  button.disabled = count < 2;
+  button.addEventListener("pointerdown", (event) => {
+    if (!event.isPrimary || event.button !== 0 || categoryDrag) return;
+    categoryList.setPointerCapture(event.pointerId);
+    categoryDrag = {
+      row, name, pointerId: event.pointerId,
+      startY: event.clientY, y: event.clientY,
+      offset: event.clientY - row.getBoundingClientRect().top,
+      translation: 0, moved: false, frame: 0,
+    };
+    event.preventDefault();
+  });
+  button.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    moveEntryCategory(name, index + (event.key === "ArrowUp" ? -1 : 1));
+  });
   return button;
 }
 
-function moveEntryCategory(name, step) {
+function moveEntryCategory(name, to) {
   const next = readEntryCategories();
   const names = next[quickEntryType];
   const from = names.indexOf(name);
-  const to = from + step;
-  if (from === -1 || to < 0 || to >= names.length) return;
-  [names[from], names[to]] = [names[to], names[from]];
-  if (saveEntryCategories(next, name + "已" + (step === -1 ? "上移" : "下移"), { resetForm: false })) {
-    const row = categoryList.children[to];
-    const sameDirection = row.querySelector('[data-category-move="' + step + '"]:enabled');
-    (sameDirection ?? row.querySelector(".category-move:enabled"))?.focus();
-  }
+  if (from === -1 || from === to || to < 0 || to >= names.length) return false;
+  names.splice(from, 1);
+  names.splice(to, 0, name);
+  if (!saveEntryCategories(next, name + "已移至第 " + (to + 1) + " 位", { resetForm: false })) return false;
+  categoryList.children[to].querySelector(".category-drag-handle").focus({ preventScroll: true });
+  return true;
 }
+
+function positionCategoryDrag(drag) {
+  const nextRow = Array.from(categoryList.children).find((row) => {
+    if (row === drag.row) return false;
+    const rect = row.getBoundingClientRect();
+    return drag.y < rect.top + rect.height / 2;
+  }) ?? null;
+  if (nextRow !== drag.row.nextElementSibling) categoryList.insertBefore(drag.row, nextRow);
+
+  const row = drag.row.getBoundingClientRect();
+  const list = categoryList.getBoundingClientRect();
+  const top = Math.max(list.top, Math.min(drag.y - drag.offset, list.bottom - row.height));
+  drag.translation = top - (row.top - drag.translation);
+  drag.row.style.transform = "translateY(" + drag.translation + "px)";
+}
+
+function trackCategoryDrag() {
+  const drag = categoryDrag;
+  if (!drag) return;
+  const bounds = categoryDialog.getBoundingClientRect();
+  const edge = 36;
+  if (drag.y < bounds.top + edge) categoryDialog.scrollTop -= Math.min(14, (bounds.top + edge - drag.y) / 2);
+  if (drag.y > bounds.bottom - edge) categoryDialog.scrollTop += Math.min(14, (drag.y - bounds.bottom + edge) / 2);
+  positionCategoryDrag(drag);
+  drag.frame = requestAnimationFrame(trackCategoryDrag);
+}
+
+categoryList.addEventListener("pointermove", (event) => {
+  const drag = categoryDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+  drag.y = event.clientY;
+  if (!drag.moved && Math.abs(drag.y - drag.startY) >= 6) {
+    drag.moved = true;
+    drag.row.classList.add("category-dragging");
+    drag.frame = requestAnimationFrame(trackCategoryDrag);
+  }
+});
+
+function endCategoryDrag(event, commit = false) {
+  const drag = categoryDrag;
+  if (!drag || ("pointerId" in event && drag.pointerId !== event.pointerId)) return;
+  categoryDrag = null;
+  cancelAnimationFrame(drag.frame);
+  if (categoryList.hasPointerCapture(drag.pointerId)) categoryList.releasePointerCapture(drag.pointerId);
+  if (!drag.moved) return;
+  if (commit) {
+    drag.y = event.clientY;
+    positionCategoryDrag(drag);
+  }
+  drag.row.style.removeProperty("transform");
+  drag.row.classList.remove("category-dragging");
+  const to = Array.from(categoryList.children).indexOf(drag.row);
+  if (!commit || !moveEntryCategory(drag.name, to)) renderCategoryManager();
+}
+
+categoryList.addEventListener("pointerup", (event) => endCategoryDrag(event, true));
+categoryList.addEventListener("pointercancel", endCategoryDrag);
+categoryList.addEventListener("lostpointercapture", endCategoryDrag);
+categoryDialog.addEventListener("close", endCategoryDrag);
 
 function saveEntryCategories(next, message, { resetForm = true } = {}) {
   try {

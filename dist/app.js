@@ -990,6 +990,7 @@ const categoryList = $("entry-category-list");
 const categoryName = $("entry-category-name");
 const categoryStatus = $("entry-category-status");
 let renamingCategory = null;
+let categoryDrag = null;
 
 function setCategoryRename(name = null) {
   renamingCategory = name;
@@ -1031,41 +1032,110 @@ function renderCategoryManager() {
       next[type] = next[type].filter((item) => item !== name);
       if (saveEntryCategories(next, "已删除分类")) categoryName.focus();
     });
-    const up = categoryMoveButton(name, -1, index === 0);
-    const down = categoryMoveButton(name, 1, index === names.length - 1);
-    row.append(label, up, down, edit, remove);
+    const handle = categorySortHandle(row, name, index, names.length);
+    row.append(handle, label, edit, remove);
     return row;
   });
   categoryList.replaceChildren(...items);
 }
 
-function categoryMoveButton(name, step, disabled) {
+function categorySortHandle(row, name, index, count) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "secondary category-move";
-  button.textContent = step === -1 ? "↑" : "↓";
-  const label = step === -1 ? "上移" : "下移";
-  button.setAttribute("aria-label", label + "：" + name);
-  button.title = label;
-  button.dataset.categoryMove = String(step);
-  button.disabled = disabled;
-  button.addEventListener("click", () => moveEntryCategory(name, step));
+  button.className = "category-drag-handle";
+  button.setAttribute("aria-label", "调整顺序：" + name);
+  button.setAttribute("aria-describedby", "category-sort-help");
+  button.title = "拖动排序";
+  button.disabled = count < 2;
+  button.addEventListener("pointerdown", (event) => {
+    if (!event.isPrimary || event.button !== 0 || categoryDrag) return;
+    categoryList.setPointerCapture(event.pointerId);
+    categoryDrag = {
+      row, name, pointerId: event.pointerId,
+      startY: event.clientY, y: event.clientY,
+      offset: event.clientY - row.getBoundingClientRect().top,
+      translation: 0, moved: false, frame: 0,
+    };
+    event.preventDefault();
+  });
+  button.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    moveEntryCategory(name, index + (event.key === "ArrowUp" ? -1 : 1));
+  });
   return button;
 }
 
-function moveEntryCategory(name, step) {
+function moveEntryCategory(name, to) {
   const next = readEntryCategories();
   const names = next[quickEntryType];
   const from = names.indexOf(name);
-  const to = from + step;
-  if (from === -1 || to < 0 || to >= names.length) return;
-  [names[from], names[to]] = [names[to], names[from]];
-  if (saveEntryCategories(next, name + "已" + (step === -1 ? "上移" : "下移"), { resetForm: false })) {
-    const row = categoryList.children[to];
-    const sameDirection = row.querySelector('[data-category-move="' + step + '"]:enabled');
-    (sameDirection ?? row.querySelector(".category-move:enabled"))?.focus();
-  }
+  if (from === -1 || from === to || to < 0 || to >= names.length) return false;
+  names.splice(from, 1);
+  names.splice(to, 0, name);
+  if (!saveEntryCategories(next, name + "已移至第 " + (to + 1) + " 位", { resetForm: false })) return false;
+  categoryList.children[to].querySelector(".category-drag-handle").focus({ preventScroll: true });
+  return true;
 }
+
+function positionCategoryDrag(drag) {
+  const nextRow = Array.from(categoryList.children).find((row) => {
+    if (row === drag.row) return false;
+    const rect = row.getBoundingClientRect();
+    return drag.y < rect.top + rect.height / 2;
+  }) ?? null;
+  if (nextRow !== drag.row.nextElementSibling) categoryList.insertBefore(drag.row, nextRow);
+
+  const row = drag.row.getBoundingClientRect();
+  const list = categoryList.getBoundingClientRect();
+  const top = Math.max(list.top, Math.min(drag.y - drag.offset, list.bottom - row.height));
+  drag.translation = top - (row.top - drag.translation);
+  drag.row.style.transform = "translateY(" + drag.translation + "px)";
+}
+
+function trackCategoryDrag() {
+  const drag = categoryDrag;
+  if (!drag) return;
+  const bounds = categoryDialog.getBoundingClientRect();
+  const edge = 36;
+  if (drag.y < bounds.top + edge) categoryDialog.scrollTop -= Math.min(14, (bounds.top + edge - drag.y) / 2);
+  if (drag.y > bounds.bottom - edge) categoryDialog.scrollTop += Math.min(14, (drag.y - bounds.bottom + edge) / 2);
+  positionCategoryDrag(drag);
+  drag.frame = requestAnimationFrame(trackCategoryDrag);
+}
+
+categoryList.addEventListener("pointermove", (event) => {
+  const drag = categoryDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+  drag.y = event.clientY;
+  if (!drag.moved && Math.abs(drag.y - drag.startY) >= 6) {
+    drag.moved = true;
+    drag.row.classList.add("category-dragging");
+    drag.frame = requestAnimationFrame(trackCategoryDrag);
+  }
+});
+
+function endCategoryDrag(event, commit = false) {
+  const drag = categoryDrag;
+  if (!drag || ("pointerId" in event && drag.pointerId !== event.pointerId)) return;
+  categoryDrag = null;
+  cancelAnimationFrame(drag.frame);
+  if (categoryList.hasPointerCapture(drag.pointerId)) categoryList.releasePointerCapture(drag.pointerId);
+  if (!drag.moved) return;
+  if (commit) {
+    drag.y = event.clientY;
+    positionCategoryDrag(drag);
+  }
+  drag.row.style.removeProperty("transform");
+  drag.row.classList.remove("category-dragging");
+  const to = Array.from(categoryList.children).indexOf(drag.row);
+  if (!commit || !moveEntryCategory(drag.name, to)) renderCategoryManager();
+}
+
+categoryList.addEventListener("pointerup", (event) => endCategoryDrag(event, true));
+categoryList.addEventListener("pointercancel", endCategoryDrag);
+categoryList.addEventListener("lostpointercapture", endCategoryDrag);
+categoryDialog.addEventListener("close", endCategoryDrag);
 
 function saveEntryCategories(next, message, { resetForm = true } = {}) {
   try {
