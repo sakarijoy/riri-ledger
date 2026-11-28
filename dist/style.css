@@ -303,8 +303,9 @@ dialog::backdrop { background: #102f3b70; }
 .category-help { margin: 6px 0; color: var(--muted); font-size: .8125rem; }
 #entry-category-status:empty { display: none; }
 #entry-category-list { list-style: none; margin: 10px 0 0; padding: 0; }
-#entry-category-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+#entry-category-list li { display: grid; grid-template-columns: minmax(0, 1fr) repeat(4, auto); align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid var(--line); }
 #entry-category-list li span { overflow-wrap: anywhere; }
+#entry-category-list .category-move { width: 44px; min-height: 44px; padding-inline: 0; font-size: 1rem; }
 #entry-category-list .danger { min-height: 44px; }
 .field input, .field select, .field textarea { width: 100%; min-width: 0; height: 40px; padding: 7px 9px; border: 1px solid #ccdee1; border-radius: 8px; background: white; color: inherit; font-weight: 400; }
 .field textarea { resize: none; line-height: 24px; }

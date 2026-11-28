@@ -313,8 +313,9 @@ dialog::backdrop { background: #102f3b70; }
 .category-help { margin: 6px 0; color: var(--muted); font-size: .8125rem; }
 #entry-category-status:empty { display: none; }
 #entry-category-list { list-style: none; margin: 10px 0 0; padding: 0; }
-#entry-category-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+#entry-category-list li { display: grid; grid-template-columns: minmax(0, 1fr) repeat(4, auto); align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid var(--line); }
 #entry-category-list li span { overflow-wrap: anywhere; }
+#entry-category-list .category-move { width: 44px; min-height: 44px; padding-inline: 0; font-size: 1rem; }
 #entry-category-list .danger { min-height: 44px; }
 .field input, .field select, .field textarea { width: 100%; min-width: 0; height: 40px; padding: 7px 9px; border: 1px solid #ccdee1; border-radius: 8px; background: white; color: inherit; font-weight: 400; }
 .field textarea { resize: none; line-height: 24px; }
@@ -436,7 +437,7 @@ dialog::backdrop { background: #102f3b70; }
 }
 
 </style>
-  <meta name="ledger-version" content="68ab874a0430b6da">
+  <meta name="ledger-version" content="797363334844d33c">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
@@ -1778,6 +1779,7 @@ $("close-editor").addEventListener("click", () => editor.close());
 
 const categoryDialog = $("entry-categories-dialog");
 const categoryForm = $("entry-category-form");
+const categoryList = $("entry-category-list");
 const categoryName = $("entry-category-name");
 const categoryStatus = $("entry-category-status");
 let renamingCategory = null;
@@ -1791,7 +1793,7 @@ function setCategoryRename(name = null) {
 
 function renderCategoryManager() {
   const names = readEntryCategories()[quickEntryType];
-  const items = names.map((name) => {
+  const items = names.map((name, index) => {
     const row = document.createElement("li");
     const label = document.createElement("span");
     label.textContent = name;
@@ -1822,13 +1824,43 @@ function renderCategoryManager() {
       next[type] = next[type].filter((item) => item !== name);
       if (saveEntryCategories(next, "已删除分类")) categoryName.focus();
     });
-    row.append(label, edit, remove);
+    const up = categoryMoveButton(name, -1, index === 0);
+    const down = categoryMoveButton(name, 1, index === names.length - 1);
+    row.append(label, up, down, edit, remove);
     return row;
   });
-  $("entry-category-list").replaceChildren(...items);
+  categoryList.replaceChildren(...items);
 }
 
-function saveEntryCategories(next, message) {
+function categoryMoveButton(name, step, disabled) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary category-move";
+  button.textContent = step === -1 ? "↑" : "↓";
+  const label = step === -1 ? "上移" : "下移";
+  button.setAttribute("aria-label", label + "：" + name);
+  button.title = label;
+  button.dataset.categoryMove = String(step);
+  button.disabled = disabled;
+  button.addEventListener("click", () => moveEntryCategory(name, step));
+  return button;
+}
+
+function moveEntryCategory(name, step) {
+  const next = readEntryCategories();
+  const names = next[quickEntryType];
+  const from = names.indexOf(name);
+  const to = from + step;
+  if (from === -1 || to < 0 || to >= names.length) return;
+  [names[from], names[to]] = [names[to], names[from]];
+  if (saveEntryCategories(next, name + "已" + (step === -1 ? "上移" : "下移"), { resetForm: false })) {
+    const row = categoryList.children[to];
+    const sameDirection = row.querySelector('[data-category-move="' + step + '"]:enabled');
+    (sameDirection ?? row.querySelector(".category-move:enabled"))?.focus();
+  }
+}
+
+function saveEntryCategories(next, message, { resetForm = true } = {}) {
   try {
     localStorage.setItem(entryCategoriesKey, JSON.stringify(next));
   } catch {
@@ -1836,7 +1868,7 @@ function saveEntryCategories(next, message) {
     return false;
   }
   renderQuickCategories();
-  setCategoryRename();
+  if (resetForm) setCategoryRename();
   renderCategoryManager();
   categoryStatus.textContent = message;
   return true;

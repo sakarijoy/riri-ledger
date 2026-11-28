@@ -986,6 +986,7 @@ $("close-editor").addEventListener("click", () => editor.close());
 
 const categoryDialog = $("entry-categories-dialog");
 const categoryForm = $("entry-category-form");
+const categoryList = $("entry-category-list");
 const categoryName = $("entry-category-name");
 const categoryStatus = $("entry-category-status");
 let renamingCategory = null;
@@ -999,7 +1000,7 @@ function setCategoryRename(name = null) {
 
 function renderCategoryManager() {
   const names = readEntryCategories()[quickEntryType];
-  const items = names.map((name) => {
+  const items = names.map((name, index) => {
     const row = document.createElement("li");
     const label = document.createElement("span");
     label.textContent = name;
@@ -1030,13 +1031,43 @@ function renderCategoryManager() {
       next[type] = next[type].filter((item) => item !== name);
       if (saveEntryCategories(next, "已删除分类")) categoryName.focus();
     });
-    row.append(label, edit, remove);
+    const up = categoryMoveButton(name, -1, index === 0);
+    const down = categoryMoveButton(name, 1, index === names.length - 1);
+    row.append(label, up, down, edit, remove);
     return row;
   });
-  $("entry-category-list").replaceChildren(...items);
+  categoryList.replaceChildren(...items);
 }
 
-function saveEntryCategories(next, message) {
+function categoryMoveButton(name, step, disabled) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary category-move";
+  button.textContent = step === -1 ? "↑" : "↓";
+  const label = step === -1 ? "上移" : "下移";
+  button.setAttribute("aria-label", label + "：" + name);
+  button.title = label;
+  button.dataset.categoryMove = String(step);
+  button.disabled = disabled;
+  button.addEventListener("click", () => moveEntryCategory(name, step));
+  return button;
+}
+
+function moveEntryCategory(name, step) {
+  const next = readEntryCategories();
+  const names = next[quickEntryType];
+  const from = names.indexOf(name);
+  const to = from + step;
+  if (from === -1 || to < 0 || to >= names.length) return;
+  [names[from], names[to]] = [names[to], names[from]];
+  if (saveEntryCategories(next, name + "已" + (step === -1 ? "上移" : "下移"), { resetForm: false })) {
+    const row = categoryList.children[to];
+    const sameDirection = row.querySelector('[data-category-move="' + step + '"]:enabled');
+    (sameDirection ?? row.querySelector(".category-move:enabled"))?.focus();
+  }
+}
+
+function saveEntryCategories(next, message, { resetForm = true } = {}) {
   try {
     localStorage.setItem(entryCategoriesKey, JSON.stringify(next));
   } catch {
@@ -1044,7 +1075,7 @@ function saveEntryCategories(next, message) {
     return false;
   }
   renderQuickCategories();
-  setCategoryRename();
+  if (resetForm) setCategoryRename();
   renderCategoryManager();
   categoryStatus.textContent = message;
   return true;
