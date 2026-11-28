@@ -274,7 +274,13 @@
           <a id="open-amap" class="attachment-action" href="https://www.amap.com/" target="_blank" rel="noopener noreferrer">打开高德地图<svg aria-hidden="true"><use href="#up"/></svg></a>
           <div class="field"><textarea id="entry-location" name="location" rows="1" autocomplete="off" maxlength="80" placeholder="选填，例如店名或地址"></textarea></div>
         </div>
-        <label class="field">备注<textarea name="note" rows="1" autocomplete="off" maxlength="80" placeholder="选填"></textarea></label>
+        <div class="entry-note">
+          <label class="field">备注<textarea name="note" rows="1" autocomplete="off" maxlength="80" placeholder="选填"></textarea></label>
+          <div id="entry-note-history" role="group" aria-label="该分类最近的备注" hidden>
+            <span class="note-history-label">最近使用</span>
+            <div id="entry-note-options"></div>
+          </div>
+        </div>
         <div class="photo-field">
           <div class="photo-heading">
             <span class="photo-title">账单照片</span>

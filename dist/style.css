@@ -316,6 +316,12 @@ dialog::backdrop { background: #102f3b70; }
 .attachment-action { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding-inline: 8px; border: 0; border-radius: 8px; background: #edf7f8; color: var(--accent); font-size: .8125rem; font-weight: 650; text-decoration: none; }
 .attachment-action:hover { background: #dbefef; }
 .attachment-action svg { width: 14px; height: 14px; }
+.entry-note { margin-bottom: 13px; }
+.entry-note .field { margin-bottom: 0; }
+#entry-note-history { display: grid; gap: 4px; margin-top: 7px; }
+.note-history-label { color: var(--muted); font-size: .75rem; }
+#entry-note-options { display: flex; flex-wrap: wrap; gap: 6px; }
+#entry-note-options button { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .form-error { color: #a5333e; font-size: 12px; margin-bottom: 10px; }
 .form-error:empty { display: none; }
 .photo-field { margin-bottom: 13px; }

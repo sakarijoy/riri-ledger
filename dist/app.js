@@ -119,6 +119,7 @@ window.addEventListener("storage", (event) => {
   if (event.key === storageKey || event.key === null) {
     records = load();
     render();
+    if (editor.open) renderNoteOptions();
   }
   if (event.key === budgetKey || event.key === partnerTotalsKey) render();
   if (event.key === entryCategoriesKey || event.key === null) renderQuickCategories();
@@ -443,6 +444,28 @@ function currentEntryCategory() {
   return form.querySelector('input[name="category"]:checked')?.value;
 }
 
+function renderNoteOptions(category = currentEntryCategory()) {
+  const type = fields.type.value;
+  const notes = new Set();
+  // Records are stored in the order they were added, newest first.
+  for (const entry of records ?? []) {
+    if (entry.type !== type || entry.category !== category || entry.id === editingId) continue;
+    const note = entry.note?.trim();
+    if (note) notes.add(note);
+    if (notes.size === 3) break;
+  }
+  const buttons = Array.from(notes, (note) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "attachment-action";
+    button.textContent = note;
+    button.addEventListener("click", () => { fields.note.value = note; });
+    return button;
+  });
+  $("entry-note-options").replaceChildren(...buttons);
+  $("entry-note-history").hidden = notes.size === 0;
+}
+
 function renderQuickCategories() {
   const names = readEntryCategories()[quickEntryType];
   const buttons = names.map((category) => {
@@ -481,6 +504,7 @@ function updateCategories(selected) {
   });
   $("entry-category-options").replaceChildren(...options);
   editorTitle.textContent = editingId ? "编辑记录" : (type === "income" ? "记收入" : "记支出") + " · " + current;
+  renderNoteOptions(current);
 }
 
 function openEditor({ entry, type = entry?.type, category = entry?.category }) {
@@ -1076,6 +1100,7 @@ monthInputs.forEach((input) => input.addEventListener("change", () => {
 form.querySelectorAll('input[name="type"]').forEach((input) => {
   input.addEventListener("change", () => updateCategories());
 });
+$("entry-category-options").addEventListener("change", () => renderNoteOptions());
 filters.forEach((button) => button.addEventListener("click", () => {
   filter = button.dataset.filter;
   render();

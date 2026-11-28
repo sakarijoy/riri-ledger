@@ -326,6 +326,12 @@ dialog::backdrop { background: #102f3b70; }
 .attachment-action { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding-inline: 8px; border: 0; border-radius: 8px; background: #edf7f8; color: var(--accent); font-size: .8125rem; font-weight: 650; text-decoration: none; }
 .attachment-action:hover { background: #dbefef; }
 .attachment-action svg { width: 14px; height: 14px; }
+.entry-note { margin-bottom: 13px; }
+.entry-note .field { margin-bottom: 0; }
+#entry-note-history { display: grid; gap: 4px; margin-top: 7px; }
+.note-history-label { color: var(--muted); font-size: .75rem; }
+#entry-note-options { display: flex; flex-wrap: wrap; gap: 6px; }
+#entry-note-options button { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .form-error { color: #a5333e; font-size: 12px; margin-bottom: 10px; }
 .form-error:empty { display: none; }
 .photo-field { margin-bottom: 13px; }
@@ -693,7 +699,13 @@ dialog::backdrop { background: #102f3b70; }
           <a id="open-amap" class="attachment-action" href="https://www.amap.com/" target="_blank" rel="noopener noreferrer">打开高德地图<svg aria-hidden="true"><use href="#up"/></svg></a>
           <div class="field"><textarea id="entry-location" name="location" rows="1" autocomplete="off" maxlength="80" placeholder="选填，例如店名或地址"></textarea></div>
         </div>
-        <label class="field">备注<textarea name="note" rows="1" autocomplete="off" maxlength="80" placeholder="选填"></textarea></label>
+        <div class="entry-note">
+          <label class="field">备注<textarea name="note" rows="1" autocomplete="off" maxlength="80" placeholder="选填"></textarea></label>
+          <div id="entry-note-history" role="group" aria-label="该分类最近的备注" hidden>
+            <span class="note-history-label">最近使用</span>
+            <div id="entry-note-options"></div>
+          </div>
+        </div>
         <div class="photo-field">
           <div class="photo-heading">
             <span class="photo-title">账单照片</span>
@@ -895,6 +907,7 @@ window.addEventListener("storage", (event) => {
   if (event.key === storageKey || event.key === null) {
     records = load();
     render();
+    if (editor.open) renderNoteOptions();
   }
   if (event.key === budgetKey || event.key === partnerTotalsKey) render();
   if (event.key === entryCategoriesKey || event.key === null) renderQuickCategories();
@@ -1219,6 +1232,28 @@ function currentEntryCategory() {
   return form.querySelector('input[name="category"]:checked')?.value;
 }
 
+function renderNoteOptions(category = currentEntryCategory()) {
+  const type = fields.type.value;
+  const notes = new Set();
+  // Records are stored in the order they were added, newest first.
+  for (const entry of records ?? []) {
+    if (entry.type !== type || entry.category !== category || entry.id === editingId) continue;
+    const note = entry.note?.trim();
+    if (note) notes.add(note);
+    if (notes.size === 3) break;
+  }
+  const buttons = Array.from(notes, (note) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "attachment-action";
+    button.textContent = note;
+    button.addEventListener("click", () => { fields.note.value = note; });
+    return button;
+  });
+  $("entry-note-options").replaceChildren(...buttons);
+  $("entry-note-history").hidden = notes.size === 0;
+}
+
 function renderQuickCategories() {
   const names = readEntryCategories()[quickEntryType];
   const buttons = names.map((category) => {
@@ -1257,6 +1292,7 @@ function updateCategories(selected) {
   });
   $("entry-category-options").replaceChildren(...options);
   editorTitle.textContent = editingId ? "编辑记录" : (type === "income" ? "记收入" : "记支出") + " · " + current;
+  renderNoteOptions(current);
 }
 
 function openEditor({ entry, type = entry?.type, category = entry?.category }) {
@@ -1852,6 +1888,7 @@ monthInputs.forEach((input) => input.addEventListener("change", () => {
 form.querySelectorAll('input[name="type"]').forEach((input) => {
   input.addEventListener("change", () => updateCategories());
 });
+$("entry-category-options").addEventListener("change", () => renderNoteOptions());
 filters.forEach((button) => button.addEventListener("click", () => {
   filter = button.dataset.filter;
   render();
